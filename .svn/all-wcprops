@@ -1,0 +1,59 @@
+K 25
+svn:wc:ra_dav:version-url
+V 31
+/svn/cschedule/!svn/ver/2/trunk
+END
+common_fn.php
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/cschedule/!svn/ver/2/trunk/common_fn.php
+END
+class_resource.php
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/cschedule/!svn/ver/2/trunk/class_resource.php
+END
+constants.php
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/cschedule/!svn/ver/2/trunk/constants.php
+END
+class_members.php
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/cschedule/!svn/ver/2/trunk/class_members.php
+END
+class_creator.php
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/cschedule/!svn/ver/3/trunk/class_creator.php
+END
+class_schedules.php
+K 25
+svn:wc:ra_dav:version-url
+V 51
+/svn/cschedule/!svn/ver/2/trunk/class_schedules.php
+END
+.htaccess
+K 25
+svn:wc:ra_dav:version-url
+V 41
+/svn/cschedule/!svn/ver/2/trunk/.htaccess
+END
+index.php
+K 25
+svn:wc:ra_dav:version-url
+V 41
+/svn/cschedule/!svn/ver/2/trunk/index.php
+END
+class_services.php
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/cschedule/!svn/ver/2/trunk/class_services.php
+END

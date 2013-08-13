@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 34
+/svn/cschedule/!svn/ver/2/trunk/sp
+END
+emailAlert_SP.sql
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/cschedule/!svn/ver/4/trunk/sp/emailAlert_SP.sql
+END
+getServiceByLastUpdate_Sp.sql
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/cschedule/!svn/ver/2/trunk/sp/getServiceByLastUpdate_Sp.sql
+END
+getMemberByLastUpdate_Sp.sql
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/cschedule/!svn/ver/2/trunk/sp/getMemberByLastUpdate_Sp.sql
+END
+getScheduleByLastUpdate_Sp.sql
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/svn/cschedule/!svn/ver/2/trunk/sp/getScheduleByLastUpdate_Sp.sql
+END
