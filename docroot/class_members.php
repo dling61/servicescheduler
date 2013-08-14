@@ -13,6 +13,8 @@ class Members Extends Resource
     }
 	protected $lastid;
 	
+	// this is test
+	
 	Protected function insert($ownerid, $member_parms) {
 	
 		$email = $member_parms['email'];
