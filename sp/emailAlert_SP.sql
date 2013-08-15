@@ -85,7 +85,7 @@
 LIMIT 1;	
 		if (temp is not NULL) then
 			insert into pushqueue (Target_Token, Message, Created_Time)
-			values (temp, sname, NOW());
+			values (temp,  CONCAT(sname,' will occur at ',stime), NOW());
 		end if;
       END LOOP;
       CLOSE cur2;

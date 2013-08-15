@@ -7,8 +7,8 @@ require_once('common_fn.php');
 class Members Extends Resource
 {
 	
-    public function __construct($params) {
-        parent::__construct($params);
+    public function __construct() {
+        parent::__construct();
 		
     }
 	protected $lastid;
@@ -46,13 +46,12 @@ class Members Extends Resource
 		mysqli_close($dbc);
 	}
 
-	Protected function update($ownerid, $member_parms) {
+	Protected function update($memberid, $ownerid, $member_parms) {
 		$membername = $member_parms['membername'];
 		$email= $member_parms['email'];
 		$mobile = $member_parms['mobile'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-	    $memberid = $this->params[0];
 		$query = "SELECT * FROM member WHERE Member_Id = '$memberid'";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
@@ -82,10 +81,9 @@ class Members Extends Resource
 		mysqli_close($dbc);
 	}
 	
-	Protected function pdelete() {
+	Protected function pdelete($memberid) {
 	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-	    $memberid = $this->params[0];
 		$query = "SELECT * FROM member WHERE Member_Id = '$memberid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
@@ -168,85 +166,55 @@ class Members Extends Resource
 		mysqli_close($dbc);	
 	}
 	
-	public function get() {
-        $ownerid = $this->params['ownerid'];
-		$lastupdatetime = urldecode($this->params['lastupdatetime']);
-		// logserver if debug flag is set to 1
-		if (DEBUG_FLAG == 1)
-		    $this->lastid = logserver("Members", "GET", $ownerid." ".$lastupdatetime);
+	// this is the API to get the list of members
+	// http://servicescheduler.net/member?ownerid=12143&lastupdatetime=121333000
+	public function get($request) {
+        $ownerid = $request->parameters['ownerid'];
+		$lastupdatetime = urldecode($request->parameters['lastupdatetime']);
 		
 		header('Content-Type: application/json; charset=utf8');
 		$this->pgetlastupdate($ownerid, $lastupdatetime);
     }
 
-	
-	public function put() {
-        $parameters = array();
-		$parameters1 = array();
-        // logic to handle an HTTP PUT request goes here
-		$body = file_get_contents("php://input");
-		// logserver if debug flag is set to 1
-		if (DEBUG_FLAG == 1)
-		    logserver("Members", "PUT", $body);
-			
-		$body_params = json_decode($body);
-        if($body_params) {
-            foreach($body_params as $param_name => $param_value) {
-                        $parameters[$param_name] = $param_value;
-            }
-        }
-		
-		if ($parameters['members']) {
-			foreach($parameters['members'] as $param_name => $param_value) {
-							$parameters1[$param_name] = $param_value;
-			}
-		}
-        
-		header('Content-Type: application/json; charset=utf8');
-		$this->update($parameters['ownerid'], $parameters1);
-    }
-
 	// This is the API to add a new member in the server
-    public function post() {
-	
-		$parameters  = array();
+	// POST http://servicescheduler.net/members
+    public function post($request) {
 		$parameters1 = array();
-        // logic to handle an HTTP GET request goes here
-		$body = file_get_contents("php://input");
-		// logserver if debug flag is set to 1
-		if (DEBUG_FLAG == 1)
-		    logserver("Members", "POST", $body);
+      
+		if ($request->body_parameters ['members']) {
+			foreach($request->body_parameters['members'] as $param_name => $param_value) {
+					$parameters1[$param_name] = $param_value;
+			}
+		}
+		header('Content-Type: application/json; charset=utf8');
+		$this->insert($request->body_parameters['ownerid'], $parameters1);  
+    }
+	
+	// method to update a member
+	// PUT http://servicescheduler.net/members/15433312
+	public function put($request) {
+		$parameters1 = array();
 			
-		$body_params = json_decode($body);
-		
-        if($body_params) {
-            foreach($body_params as $param_name => $param_value) {
-                        $parameters[$param_name] = $param_value;
-            }
-		}	
-		if ($parameters['members']) {
-			foreach($parameters['members'] as $param_name => $param_value) {
+		if ($request->body_parameters['members']) {
+			foreach($request->body_parameters['members'] as $param_name => $param_value) {
 							$parameters1[$param_name] = $param_value;
 			}
 		}
-		
+        $memberid = end($request->url_elements);
+		reset($request->url_elements);
 		header('Content-Type: application/json; charset=utf8');
-		
-		$this->insert($parameters['ownerid'], $parameters1);
-	    
+		$this->update($memberid, $request->body_parameters['ownerid'], $parameters1);
     }
 	
 	/**
 	   There is no body in the DELETE HTTP Method
 	**/
-	public function delete() {
+	public function delete($request) {
 		 // logic to handle an HTTP PUT request goes here
-		$memberid = $this->params[0];
-		// logserver if debug flag is set to 1
-		if (DEBUG_FLAG == 1)
-		    logserver("Members", "DELETE", $memberid);
+		$memberid = end($request->url_elements);
+		reset($request->url_elements);
 		header('Content-Type: application/json; charset=utf8');
-		$this->pdelete();
+		$this->pdelete($memberid);
     }
 
 }

@@ -3,12 +3,21 @@ abstract class Resource
 {
     protected static $httpMethods = array("GET", "POST", "HEAD","PUT", "OPTIONS", "DELETE", "TRACE", "CONNECT");
 
-    protected $params;
-
-    public function __construct(array $params) {
-        $this->params = $params;
+	protected $version;
+	
+	public function __construct() {
     }
 
+	/**
+    public function __construct($version, array $params) {
+        $this->params = $params;
+		// handle the existing clients
+		if ($version == null) 
+			$this->version = 1;
+		else 
+			$this->version = $version;
+    }
+  
     protected function allowedHttpMethods() {
 
         $myMethods = array();
@@ -26,6 +35,6 @@ abstract class Resource
         header("HTTP/1.1 405 Method Not Allowed", true, 405);
         header("Allow: " . join($this->allowedHttpMethods(), ", "));
     }
-
+   **/
 }
 ?>

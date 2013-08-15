@@ -3,31 +3,19 @@
 require_once('class_resource.php');
 require_once('constants.php');
 require_once('common_fn.php');
+require_once('class_request.php');
 
 class Creator Extends Resource
 {
 	protected $action;
 	protected $lastid;
 	
-   /** public function __construct($params) {
-        parent::__construct($params);
-		
-    }
-  
-	public function __construct($params, $action) {
-        parent::__construct($params);
-		
-		$this->action = $action;
-    }
-	***/
-	
-	public function __construct($action) {
-		$this->action = $action;
+	public function __construct() {
 	}	
 	
 	// this is to register 
 	Protected function register($body_parms) {
-	
+	    
 	    $dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 		mysqli_select_db($dbc, DB_NAME);
 		
@@ -51,6 +39,7 @@ class Creator Extends Resource
 			$data2 = mysqli_query($dbc,$querysearch);			
 			$row = mysqli_fetch_array($data2);
 			$userid = $row['User_Id'];
+			
 			// Success
 			$data3 = json_encode(array('ownerid'=> $userid));
 			echo $data3;
@@ -213,7 +202,7 @@ class Creator Extends Resource
 		
 	}
 		
-    public function get() {
+    public function get($request) {
         $parameters = array();
         // logic to handle an HTTP GET request goes here
 		$body = file_get_contents("php://input");
@@ -228,30 +217,20 @@ class Creator Extends Resource
     }
 
 	// This is the API to register a user in the servre and login in
-    public function post() {
-			
-		$parameters = array();
-        // logic to handle an HTTP GET request goes here
-		$body = file_get_contents("php://input");
-		$body_params = json_decode($body);
-        if($body_params) {
-            foreach($body_params as $param_name => $param_value) {
-                        $parameters[$param_name] = $param_value;
-            }
-        }
+    public function post($request) {
 		
 		header('Content-Type: application/json; charset=utf8');
-	    if ($this->action == 'register') {
-			$this->register($parameters);
+	    if ($request->parameters['action'] == 'register') {
+			$this->register($request->body_parameters);
 		}
-		else if ($this->action == 'signin') {
-		    $this->signin($parameters);
+		else if ($request->parameters['action'] == 'signin') {
+		    $this->signin($request->body_parameters);
 		} 
-		else if ($this->action == 'resetpw') {
-		    $this->resetpw($parameters);
+		else if ($this->parameters['action'] == 'resetpw') {
+		    $this->resetpw($request->body_parameters);
 		} 
-		else if ($this->action == 'settoken') {
-		    $this->settoken($parameters);
+		else if ($this->parameters['action'] == 'settoken') {
+		    $this->settoken($request->body_parameters);
 		} 
     }
 

@@ -7,8 +7,8 @@ require_once('common_fn.php');
 class Schedules Extends Resource
 {
 	
-    public function __construct($params) {
-        parent::__construct($params);
+    public function __construct() {
+        parent::__construct();
 		
     }
 	protected $lastid;
@@ -77,8 +77,7 @@ class Schedules Extends Resource
 	}
 	
 	// this is to update schedule and member assigment 
-	Protected function update($serviceid, $schedule_parms) {
-	
+	Protected function update($serviceid, $scheduleid, $schedule_parms) {
 		$parameters2 = array();													
 		
 		$description = $schedule_parms['desp'];
@@ -94,10 +93,7 @@ class Schedules Extends Resource
 		}	
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-	    $scheduleid = $this->params[0];
-		
 		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$scheduleid'";
-		
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
         if (mysqli_num_rows($data)==1) {
@@ -142,7 +138,6 @@ class Schedules Extends Resource
 				}
 			    mysqli_commit($dbc);
 				$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
-				//echo json_encode($data2);
 				echo $data2;
 			}		
 		}
@@ -156,10 +151,8 @@ class Schedules Extends Resource
 	/**
 	  This is to delete the schedule
 	**/
-	Protected function pdelete() {
-	
+	Protected function pdelete($scheduleid) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-	    $scheduleid = $this->params[0];
 		
 		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$scheduleid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
@@ -322,87 +315,55 @@ class Schedules Extends Resource
 	/***
 	   Followings are the functions called from index.php
 	***/	
-    public function get() {
-	   
-        $ownerid = $this->params['ownerid'];
-		$lastupdatetime = urldecode($this->params['lastupdatetime']);
-		// logserver if debug flag is set to 1
-		if (DEBUG_FLAG == 1)
-		    $this->lastid = logserver("Schedules", "GET", $ownerid." ".$lastupdatetime);
+    public function get($request) {   
+        $ownerid = $request->parameters['ownerid'];
+		$lastupdatetime = urldecode($request->parameters['lastupdatetime']);
 		
 		header('Content-Type: application/json; charset=utf8');
 		$this->pgetlastupdate($ownerid, $lastupdatetime);
     }
 
 	// This is the API to create a new schedule in the server
-    public function post() {
-	
-		$parameters  = array();
+    public function post($request) {
 		$parameters1 = array();
 		
-        // logic to handle an HTTP GET request goes here
-		$body = file_get_contents("php://input");
-		// logserver if debug flag is set to 1
-		if (DEBUG_FLAG == 1)
-		    logserver("Schedules", "POST", $body);
-			
-		$body_params = json_decode($body);
-		
-        if($body_params) {
-            foreach($body_params as $param_name => $param_value) {
-                        $parameters[$param_name] = $param_value;
-            }
-		}	
-		if ($parameters['schedules']) {
-			foreach($parameters['schedules'] as $param_name => $param_value) {
+		if ($request->body_parameters['schedules']) {
+			foreach($request->body_parameters['schedules'] as $param_name => $param_value) {
 				$parameters1[$param_name] = $param_value;				
 			}
 		}
 		
 		header('Content-Type: application/json; charset=utf8');
 		// process them to insert into the schedule table and onDuty
-		$this->insert($parameters['ownerid'], $parameters['serviceid'], $parameters1);
+		$this->insert($request->body_parameters['ownerid'], $request->body_parameters['serviceid'], $parameters1);
 	    
     }
 	
 	// update a schedule with the schedule Id
-	public function put() {
-        $parameters = array();
+	public function put($request) {
 		$parameters1 = array();
-        // logic to handle an HTTP PUT request goes here
-		$body = file_get_contents("php://input");
-		// logserver if debug flag is set to 1
-		if (DEBUG_FLAG == 1)
-		    logserver("Schedules", "PUT", $body);
-			
-		$body_params = json_decode($body);
-        if($body_params) {
-            foreach($body_params as $param_name => $param_value) {
-                        $parameters[$param_name] = $param_value;
-            }
-        }
 		
-		if ($parameters['schedules']) {
-			foreach($parameters['schedules'] as $param_name => $param_value) {
+		if ($request->body_parameters['schedules']) {
+			foreach($request->body_parameters['schedules'] as $param_name => $param_value) {
 							$parameters1[$param_name] = $param_value;
 			}
 		}
         
 		header('Content-Type: application/json; charset=utf8');
-		$this->update($parameters['serviceid'], $parameters1);
+		$scheduleid = end($request->url_elements);
+		reset($request->url_elements);
+		$this->update($request->body_parameters['serviceid'], $scheduleid, $parameters1);
     }
 	
 	/**
 	   There is no body in the DELETE HTTP Method
 	**/
-	public function delete() {
+	public function delete($request) {
 	     // logic to handle an HTTP PUT request goes here
-		$scheduleid = $this->params[0];
-		// logserver if debug flag is set to 1
-		if (DEBUG_FLAG == 1)
-		    logserver("Schedules", "DELETE", $scheduleid);
 		header('Content-Type: application/json; charset=utf8');
-		$this->pdelete();
+		$scheduleid = end($request->url_elements);
+		reset($request->url_elements);
+		$this->pdelete($scheduleid);
     }
 
 

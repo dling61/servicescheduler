@@ -34,11 +34,17 @@
   );
 
  IF p_lastupdate !="0000-00-00 00:00:00" THEN
-   (SELECT tmp.Member_Id memberid,tmp.Member_Email memberemail,tmp.Member_Name membername,
+ -- following update
+    (SELECT tmp.Member_Id memberid,tmp.Member_Email memberemail,tmp.Member_Name membername,
           tmp.Mobile_Number mobilenumber,tmp.Is_Deleted isdeleted,tmp.Creator_Id creatorid,
           tmp.Created_Time createdtime,tmp.Last_Modified lastmodified 
-      FROM tmp_member tmp);
+      FROM tmp_member tmp)
+	UNION
+	(SELECT Member_Id memberid, Member_Email memberemail, Member_Name membername, Mobile_Number mobilenumber,
+      Is_Deleted isdeleted, Creator_Id creatorid, Created_Time createdtime, Last_Modified lastmodified
+      From member where Creator_Id = ownerid and Last_Modified > p_lastupdate);
   ELSE 
+  -- first update
     (SELECT tmp.Member_Id memberid,tmp.Member_Email memberemail,tmp.Member_Name membername,tmp.Mobile_Number mobilenumber,
       tmp.Is_Deleted isdeleted,tmp.Creator_Id creatorid,tmp.Created_Time createdtime,tmp.Last_Modified lastmodified 
       FROM tmp_member tmp)
