@@ -22,10 +22,8 @@ class Services Extends Resource
 		$servicename = $service_parms['servicename'];
 		$description = $service_parms['desp'];
 		$srepeat = $service_parms['repeat'];
-		$starttime = $service_parms['starttime'];
-		$endtime = $service_parms['endtime'];
-		$fromdate = $service_parms['fromdate'];
-		$todate = $service_parms['todate'];
+		$startdatetime = $service_parms['startdatetime'];
+		$enddatetime = $service_parms['enddatetime'];
 		$utcoff = $service_parms['utcoff'];
 		$alert = $service_parms['alert'];
 	  
@@ -39,8 +37,8 @@ class Services Extends Resource
 		else {
 			// Insert this service if no exists
 			$queryinsert = "INSERT INTO service ".
-								"(Service_Id,Service_Name,Description,SRepeat,Start_Time,End_Time,From_Date,To_Date,UTC_Off,Alert,Creator_Id,Is_Deleted,Created_Time,Last_Modified)".
-								" values('$serviceid','$servicename','$description','$srepeat','$starttime','$endtime','$fromdate','$todate','$utcoff','$alert','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP())";
+								"(Service_Id,Service_Name,Description,SRepeat,Start_Datetime,End_Datetime,UTC_Off,Alert,Creator_Id,Is_Deleted,Created_Time,Last_Modified)".
+								" values('$serviceid','$servicename','$description','$srepeat',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$utcoff','$alert','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP())";
 			
 			$result = mysqli_query($dbc,$queryinsert) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
@@ -61,10 +59,8 @@ class Services Extends Resource
 		$servicename = $service_parms['servicename'];
 		$description= $service_parms['desp'];
 		$repeat = $service_parms['repeat'];
-		$starttime = $service_parms['starttime'];
-		$endtime = $service_parms['endtime'];
-		$fromdate = $service_parms['fromdate'];
-		$todate = $service_parms['todate'];
+		$startdatetime = $service_parms['startdatetime'];
+		$enddatetime = $service_parms['enddatetime'];
 		// Don't need to update it
 		//$utcoff = $service_parms['utcoff'];
 		$alert = $service_parms['alert'];
@@ -77,8 +73,8 @@ class Services Extends Resource
         if (mysqli_num_rows($data)==1) {
 		    // Service exists and go ahead to update it
 			$queryupdate = "update service set ".
-						"Service_Name = '$servicename', Description = '$description', SRepeat = '$repeat', Start_Time = '$starttime', End_Time = '$endtime', Last_Modified = UTC_TIMESTAMP() ".
-						" , From_Date = '$fromdate', To_Date = '$todate', Alert = '$alert' where Service_Id = '$serviceid'";
+						"Service_Name = '$servicename', Description = '$description', SRepeat = '$repeat', Start_Datetime = UNIX_TIMESTAMP('$startdatetime'), End_Datetime = UNIX_TIMESTAMP('$enddatetime'), Last_Modified = UTC_TIMESTAMP() ".
+						" , Alert = '$alert' where Service_Id = '$serviceid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
@@ -189,10 +185,12 @@ class Services Extends Resource
 				   $one_arr['servicename'] = $row0['servicename'];
 				   $one_arr['desp'] = $row0['descp'];
 				   $one_arr['repeat'] = $row0['srepeat'];
-				   $one_arr['starttime'] = $row0['starttime'];
-				   $one_arr['endtime'] = $row0['endtime'];
-				   $one_arr['fromdate'] = $row0['fromdate'];
-				   $one_arr['todate'] = $row0['todate'];
+				   //$one_arr['starttime'] = $row0['starttime'];
+				   //$one_arr['endtime'] = $row0['endtime'];
+				   //$one_arr['fromdate'] = $row0['fromdate'];
+				   //$one_arr['todate'] = $row0['todate'];
+				   $one_arr['startdatetime'] = $row0['startdatetime'];
+				   $one_arr['enddatetime'] = $row0['enddatetime'];
 				   $one_arr['alert'] = $row0['alert'];
 				   $one_arr['creatorid'] = $row0['creatorid'];
 				   $one_arr['createdtime'] = $row0['createdtime'];

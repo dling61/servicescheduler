@@ -29,12 +29,18 @@ Drop table if exists tmp_schedule;
   ))
   );
   
-
-    IF p_lastupdate !="0000-00-00 00:00:00" THEN
+  -- schedule list
+  IF p_lastupdate !="0000-00-00 00:00:00" THEN
+  -- follow updates
    (SELECT tmp.Schedule_Id scheduleid,tmp.Service_Id serviceid, tmp.Creator_Id creatorid, tmp.Description description,FROM_UNIXTIME(tmp.Start_Datetime) starttime,
       FROM_UNIXTIME(tmp.End_Datetime) endtime,tmp.Is_Deleted isdeleted,tmp.OD_Is_Deleted odisdeleted,tmp.Created_Time createdtime,tmp.Last_Modified lastmodified 
-      FROM tmp_schedule tmp);
+      FROM tmp_schedule tmp)
+	UNION
+	(SELECT Schedule_Id scheduleid, Service_Id serviceid, Creator_Id creatorid,Description description, FROM_UNIXTIME(Start_Datetime),
+          FROM_UNIXTIME(End_Datetime), Is_Deleted isdeleted, 0, Created_Time createdtime, Last_Modified lastmodified
+      FROM schedule where Creator_Id = ownerId and Last_Modified > p_lastupdate);
   ELSE 
+  -- first update
     (SELECT tmp.Schedule_Id scheduleid,tmp.Service_Id serviceid, tmp.Creator_Id creatorid, tmp.Description description,FROM_UNIXTIME(tmp.Start_Datetime) starttime,
       FROM_UNIXTIME(tmp.End_Datetime) endtime,tmp.Is_Deleted isdeleted,tmp.OD_Is_Deleted odisdeleted,tmp.Created_Time createdtime,tmp.Last_Modified lastmodified 
       FROM tmp_schedule tmp)
@@ -44,12 +50,19 @@ Drop table if exists tmp_schedule;
       FROM schedule where Creator_Id = ownerId and Is_Deleted = 0);
   END IF;
 
-    IF p_lastupdate !="0000-00-00 00:00:00" THEN
+  -- Member list
+  IF p_lastupdate !="0000-00-00 00:00:00" THEN
+  -- following updates
     (SELECT tmp.Schedule_Id scheduleid, ot.Member_Id memberid 
       FROM tmp_schedule tmp,onduty ot
         WHERE  (tmp.Is_Deleted = 0 or tmp.OD_Is_Deleted = 0)
-        and tmp.Schedule_Id = ot.Schedule_Id);   
+        and tmp.Schedule_Id = ot.Schedule_Id)
+	UNION
+	(SELECT s.Schedule_Id scheduleid, o.Member_Id memberid
+      FROM schedule s, onduty o
+      WHERE s.Creator_Id = ownerid and s.Schedule_Id = o.Schedule_Id and s.Last_Modified > p_lastupdate);   
   ELSE 
+  -- first update
     (SELECT tmp.Schedule_Id scheduleid, ot.Member_Id memberid 
       FROM tmp_schedule tmp,onduty ot
         WHERE  (tmp.Is_Deleted = 0 or tmp.OD_Is_Deleted = 0)
