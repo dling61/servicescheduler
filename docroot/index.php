@@ -6,6 +6,8 @@
 	require_once('class_schedules.php');
 	require_once('class_request.php');
 	
+	// 08/16/2013: Moved this to GitHub for source code version control
+	
 	//Define our id-key pairs
 	$applications = array(
 	    // for IOS
