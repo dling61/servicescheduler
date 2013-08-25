@@ -201,19 +201,58 @@ class Creator Extends Resource
 		mysqli_close($dbc);
 		
 	}
+	
+	// this is to retrieve the latest service/member/schedule IDs from the server
+	Protected function pgetlastId($ownerid) {
+	
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+		 
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+	  
+        $query = "SELECT IFNULL(MAX( s.service_id ), 0) Service_Id, IFNULL(MAX(m.member_id ), 0) Member_Id, IFNULL(MAX(sc.schedule_id), 0) Schedule_Id FROM user u ".
+					"LEFT JOIN service s ON u.User_Id = s.Creator_Id ".
+					"LEFT JOIN member m ON u.User_Id = m.Creator_Id ".
+					"LEFT JOIN schedule sc ON u.User_Id = sc.Creator_Id ".
+					" WHERE u.User_Id =  '$ownerid'";
+		$data = mysqli_query($dbc, $query);
 		
+        if (mysqli_num_rows($data)==1) {
+		    $row = mysqli_fetch_array($data);
+			
+			$one_arr = array();
+			$one_arr['serviceid'] = $row['Service_Id'];
+			$one_arr['memberid'] = $row['Member_Id'];
+			$one_arr['scheduleid'] = $row['Schedule_Id'];
+			
+			
+			$data2 = json_encode($one_arr);
+			echo $data2;
+				
+			// logserver if debug flag is set to 1
+			if (DEBUG_FLAG == 1)
+					logserveronce("GETLASTID","GET", $ownerid, $data2);
+	    }
+		else {
+			// No match in the user table
+			header('HTTP/1.0 401 Error in getting last IDs', true, 401);
+		}
+		$data->close();
+		mysqli_close($dbc);
+	}
+	
+	
+	// this is the API to get the latest service/member/schedule ID
+	// GET http://[domain name]/creator/1234
+	// "1234" is the caller's ownerid
     public function get($request) {
-        $parameters = array();
-        // logic to handle an HTTP GET request goes here
-		$body = file_get_contents("php://input");
-		$body_params = json_decode($body);
-        if($body_params) {
-            foreach($body_params as $param_name => $param_value) {
-                        $parameters[$param_name] = $param_value;
-            }
-        }
-		print("---------- http_get_request_body() -------------\n$body2\n\n");
-        // ...
+	   
+	    $lastElement = end($request->url_elements);
+		reset($request->url_elements);
+		
+        $ownerid = $lastElement;
+	    
+		header('Content-Type: application/json; charset=utf8');
+		$this->pgetlastId($ownerid);
     }
 
 	// This is the API to register a user in the servre and login in
