@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: 50.63.108.35
--- Generation Time: Jan 23, 2013 at 10:50 AM
+-- Generation Time: Aug 26, 2013 at 01:26 PM
 -- Server version: 5.0.96
 -- PHP Version: 5.1.6
 
@@ -55,6 +55,40 @@ CREATE TABLE IF NOT EXISTS `onduty` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `pushqueue`
+--
+
+DROP TABLE IF EXISTS `pushqueue`;
+CREATE TABLE IF NOT EXISTS `pushqueue` (
+  `Pushqueue_Id` int(11) NOT NULL auto_increment,
+  `Target_Token` varchar(100) NOT NULL,
+  `Message` varchar(200) NOT NULL,
+  `Sent_Time` datetime NOT NULL,
+  `Created_Time` datetime NOT NULL,
+  PRIMARY KEY  (`Pushqueue_Id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `resetpassword`
+--
+
+DROP TABLE IF EXISTS `resetpassword`;
+CREATE TABLE IF NOT EXISTS `resetpassword` (
+  `Request_Id` int(11) NOT NULL auto_increment,
+  `Email` varchar(100) NOT NULL,
+  `Token` int(11) NOT NULL,
+  `Is_Done` tinyint(1) NOT NULL,
+  `Expired_Time` int(10) NOT NULL,
+  `Created_Time` datetime NOT NULL,
+  `Last_Modified` datetime NOT NULL,
+  PRIMARY KEY  (`Request_Id`)
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3 ;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `schedule`
 --
 
@@ -88,7 +122,7 @@ CREATE TABLE IF NOT EXISTS `serverlog` (
   `Created_DateTime` datetime NOT NULL,
   `Client_Device_Id` int(11) NOT NULL,
   PRIMARY KEY  (`Log_Id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=3506 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=12301 ;
 
 -- --------------------------------------------------------
 
@@ -106,12 +140,35 @@ CREATE TABLE IF NOT EXISTS `service` (
   `End_Time` time NOT NULL,
   `From_Date` date NOT NULL,
   `To_Date` date NOT NULL,
+  `Start_Datetime` int(10) NOT NULL,
+  `End_Datetime` int(10) NOT NULL,
+  `UTC_Off` int(10) NOT NULL,
   `Alert` int(11) NOT NULL,
   `Creator_Id` int(11) NOT NULL,
   `Is_Deleted` tinyint(1) NOT NULL,
   `Created_Time` datetime NOT NULL,
   `Last_Modified` datetime NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `tmp_alert`
+--
+
+DROP TABLE IF EXISTS `tmp_alert`;
+CREATE TABLE IF NOT EXISTS `tmp_alert` (
+  `Schedule_Id` int(11) NOT NULL,
+  `Service_Id` int(11) NOT NULL,
+  `Service_Name` varchar(100) NOT NULL,
+  `Description` varchar(200) NOT NULL,
+  `SDescription` varchar(200) NOT NULL,
+  `SUTC_Off` int(10) NOT NULL,
+  `Start_Datetime` int(10) NOT NULL,
+  `Cur_Datetime` int(10) NOT NULL,
+  `Alert_Setting` int(11) NOT NULL,
+  `Alert` int(11) NOT NULL
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 
 -- --------------------------------------------------------
 
@@ -131,14 +188,32 @@ CREATE TABLE IF NOT EXISTS `user` (
   `Created_Time` datetime NOT NULL,
   `Last_Modified` datetime NOT NULL,
   PRIMARY KEY  (`User_id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=9 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=82 ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `userlog`
+--
+
+DROP TABLE IF EXISTS `userlog`;
+CREATE TABLE IF NOT EXISTS `userlog` (
+  `User_Id` int(11) NOT NULL,
+  `Udid` varchar(100) NOT NULL,
+  `Token` varchar(100) NOT NULL,
+  `Created_Time` datetime NOT NULL,
+  `Last_Modified` datetime NOT NULL,
+  `Expired_Time` datetime NOT NULL,
+  `Logout_Time` datetime NOT NULL,
+  UNIQUE KEY `main_index` (`User_Id`,`Udid`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
 DELIMITER $$
 --
 -- Procedures
 --
 DROP PROCEDURE IF EXISTS `emailAlert`$$
-CREATE PROCEDURE `emailAlert`()
+CREATE DEFINER=`testscheduler1`@`%` PROCEDURE `emailAlert`()
 BEGIN
   
 
@@ -149,6 +224,7 @@ BEGIN
   `Service_Name` varchar(100) NOT NULL,
   `Description` varchar(200) NOT NULL,
   `SDescription` varchar(200) NOT NULL,
+  `SUTC_Off` int(10) NOT NULL,
   `Start_Datetime` INT(10) NOT NULL,
   `Cur_Datetime` INT(10) NOT NULL,
   `Alert_Setting` int(11) NOT NULL,
@@ -156,8 +232,8 @@ BEGIN
   ) Engine=MyISAM;
   
 
- Insert into tmp_alert (Schedule_Id,Service_Id,Service_Name,Description,SDescription,Start_Datetime,Cur_Datetime,Alert_Setting,Alert)
-  SELECT distinct sc.Schedule_Id,s.Service_Id,s.Service_Name,s.Description,sc.Description,sc.Start_Datetime,UNIX_TIMESTAMP(UTC_TIMESTAMP()),s.Alert,0
+ Insert into tmp_alert (Schedule_Id,Service_Id,Service_Name,Description,SDescription,SUTC_Off,Start_Datetime,Cur_Datetime,Alert_Setting,Alert)
+  SELECT distinct sc.Schedule_Id,s.Service_Id,s.Service_Name,s.Description,sc.Description,s.UTC_Off,sc.Start_Datetime,UNIX_TIMESTAMP(UTC_TIMESTAMP()),s.Alert,0
   from service s, schedule sc 
   where s.Service_Id = sc.Service_Id
    and (sc.Start_Datetime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) <= 172800 
@@ -180,22 +256,56 @@ BEGIN
         IF done THEN
           LEAVE read_loop;
         END IF;
-                IF (sr = 2) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (900 + 300) OR (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (900 - 300)) THEN                  update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-        ELSEIF (sr = 3) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (1800 + 300) OR (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (1800 - 300)) THEN
+                IF (sr = 2) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (900 + 300) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (900 - 300)) THEN                  update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
+        ELSEIF (sr = 3) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (1800 + 300) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (1800 - 300)) THEN
           update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-        ELSEIF (sr = 4) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (3600 + 300) OR (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (3600 - 300)) THEN
+        ELSEIF (sr = 4) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (3600 + 300) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (3600 - 300)) THEN
           update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-        ELSEIF (sr = 5) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (7200 + 300) OR (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (7200 - 300)) THEN
+        ELSEIF (sr = 5) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (7200 + 300) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (7200 - 300)) THEN
           update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-        ELSEIF (sr = 6) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (86400 + 300) OR (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (86400 - 300)) THEN             update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-        ELSEIF (sr = 7) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (172800 + 300) OR (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (172800 - 300)) THEN           update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
+        ELSEIF (sr = 6) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (86400 + 300) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (86400 - 300)) THEN             update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
+        ELSEIF (sr = 7) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (172800 + 300) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (172800 - 300)) THEN           update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
         END IF;
       END LOOP;
       CLOSE cur1;
       SET SQL_SAFE_UPDATES=1;
   END;
   
-  SELECT distinct tmp.Service_Name servicename,tmp.Description descp,tmp.SDescription sdescp,tmp.Start_Datetime starttime,tmp.Cur_Datetime curtime,
+    BEGIN 
+      DECLARE done2 INT DEFAULT FALSE;
+      DECLARE userid INT(11);
+	  DECLARE sname VARCHAR(100);
+	  DECLARE stime DATETIME;
+	  DECLARE temp VARCHAR(100);
+	  
+      DECLARE cur2 CURSOR FOR SELECT distinct us.User_Id,tmp.Service_Name,FROM_UNIXTIME(tmp.Start_Datetime + tmp.SUTC_Off)
+		FROM tmp_alert tmp, onduty dt, member mb, user us
+		WHERE tmp.Alert = 1
+            and dt.Schedule_Id = tmp.Schedule_Id
+            and dt.Member_Id = mb.Member_Id
+			and us.User_Id = (select Creator_Id from service where Service_Id = tmp.Service_Id);
+			
+      DECLARE CONTINUE HANDLER FOR NOT FOUND SET done2 = TRUE;
+      
+      SET SQL_SAFE_UPDATES=0;
+      OPEN cur2;
+      insert_loop: LOOP
+        FETCH cur2 INTO userid, sname, stime;
+        IF done2 THEN
+          LEAVE insert_loop;
+        END IF;
+        				SELECT Token into temp FROM userlog WHERE User_Id = userid;
+		
+		if (temp is not NULL) then
+			insert into pushqueue (Target_Token, Message, Created_Time)
+			values (temp, sname, NOW());
+		end if;
+      END LOOP;
+      CLOSE cur2;
+      SET SQL_SAFE_UPDATES=1;
+  END;
+	
+    SELECT distinct tmp.Service_Name servicename,tmp.Description descp,tmp.SDescription sdescp,FROM_UNIXTIME(tmp.Start_Datetime + tmp.SUTC_Off) starttime,tmp.Cur_Datetime curtime,
          mb.Member_Email memail, mb.Member_Name mname, us.User_Name uname, us.Email uemail, us.Mobile umobile, tmp.Alert_setting alertsetting
       FROM tmp_alert tmp, onduty dt, member mb, user us
       WHERE tmp.Alert = 1
@@ -203,12 +313,11 @@ BEGIN
             and dt.Member_Id = mb.Member_Id
 			and us.User_Id = (select Creator_Id from service where Service_Id = tmp.Service_Id)
 			order by tmp.Service_Id;
-			
-  DROP TABLE  tmp_alert;
-  END$$
+
+    END$$
 
 DROP PROCEDURE IF EXISTS `getMemberByLastUpdate`$$
-CREATE PROCEDURE `getMemberByLastUpdate`(IN ownerid INT, IN p_lastupdate Datetime)
+CREATE DEFINER=`testscheduler1`@`%` PROCEDURE `getMemberByLastUpdate`(IN ownerid INT, IN p_lastupdate Datetime)
 BEGIN
   
   
@@ -234,17 +343,21 @@ BEGIN
   and o.Service_Id in 
   (select distinct Service_Id from onduty where member_id in 
   (select member_id from member 
-     where Member_Email = (select Email from user where User_Id = ownerid)
+     where Member_Email = (select Email from user where User_Id = ownerid) 
   )
   );
 
  IF p_lastupdate !="0000-00-00 00:00:00" THEN
-   (SELECT tmp.Member_Id memberid,tmp.Member_Email memberemail,tmp.Member_Name membername,
+     (SELECT tmp.Member_Id memberid,tmp.Member_Email memberemail,tmp.Member_Name membername,
           tmp.Mobile_Number mobilenumber,tmp.Is_Deleted isdeleted,tmp.Creator_Id creatorid,
           tmp.Created_Time createdtime,tmp.Last_Modified lastmodified 
-      FROM tmp_member tmp);
+      FROM tmp_member tmp)
+	UNION
+	(SELECT Member_Id memberid, Member_Email memberemail, Member_Name membername, Mobile_Number mobilenumber,
+      Is_Deleted isdeleted, Creator_Id creatorid, Created_Time createdtime, Last_Modified lastmodified
+      From member where Creator_Id = ownerid and Last_Modified > p_lastupdate);
   ELSE 
-    (SELECT tmp.Member_Id memberid,tmp.Member_Email memberemail,tmp.Member_Name membername,tmp.Mobile_Number mobilenumber,
+      (SELECT tmp.Member_Id memberid,tmp.Member_Email memberemail,tmp.Member_Name membername,tmp.Mobile_Number mobilenumber,
       tmp.Is_Deleted isdeleted,tmp.Creator_Id creatorid,tmp.Created_Time createdtime,tmp.Last_Modified lastmodified 
       FROM tmp_member tmp)
     UNION
@@ -258,10 +371,10 @@ BEGIN
   END$$
 
 DROP PROCEDURE IF EXISTS `getScheduleByLastUpdate`$$
-CREATE PROCEDURE `getScheduleByLastUpdate`(IN ownerid INT, IN p_lastupdate Datetime)
+CREATE DEFINER=`testscheduler1`@`%` PROCEDURE `getScheduleByLastUpdate`(IN ownerid INT, IN p_lastupdate Datetime)
 BEGIN
   
-  Drop table if exists tmp_schedule;
+Drop table if exists tmp_schedule;
     Create table tmp_schedule (
   `Schedule_Id` int(11) NOT NULL,
   `Service_Id` int(11) NOT NULL,
@@ -287,13 +400,16 @@ BEGIN
   ))
   );
   
-
     IF p_lastupdate !="0000-00-00 00:00:00" THEN
-   (SELECT tmp.Schedule_Id scheduleid,tmp.Service_Id serviceid, tmp.Creator_Id creatorid, tmp.Description description,FROM_UNIXTIME(tmp.Start_Datetime) starttime,
+     (SELECT tmp.Schedule_Id scheduleid,tmp.Service_Id serviceid, tmp.Creator_Id creatorid, tmp.Description description,FROM_UNIXTIME(tmp.Start_Datetime) starttime,
       FROM_UNIXTIME(tmp.End_Datetime) endtime,tmp.Is_Deleted isdeleted,tmp.OD_Is_Deleted odisdeleted,tmp.Created_Time createdtime,tmp.Last_Modified lastmodified 
-      FROM tmp_schedule tmp);
+      FROM tmp_schedule tmp)
+	UNION
+	(SELECT Schedule_Id scheduleid, Service_Id serviceid, Creator_Id creatorid,Description description, FROM_UNIXTIME(Start_Datetime),
+          FROM_UNIXTIME(End_Datetime), Is_Deleted isdeleted, 0, Created_Time createdtime, Last_Modified lastmodified
+      FROM schedule where Creator_Id = ownerId and Last_Modified > p_lastupdate);
   ELSE 
-    (SELECT tmp.Schedule_Id scheduleid,tmp.Service_Id serviceid, tmp.Creator_Id creatorid, tmp.Description description,FROM_UNIXTIME(tmp.Start_Datetime) starttime,
+      (SELECT tmp.Schedule_Id scheduleid,tmp.Service_Id serviceid, tmp.Creator_Id creatorid, tmp.Description description,FROM_UNIXTIME(tmp.Start_Datetime) starttime,
       FROM_UNIXTIME(tmp.End_Datetime) endtime,tmp.Is_Deleted isdeleted,tmp.OD_Is_Deleted odisdeleted,tmp.Created_Time createdtime,tmp.Last_Modified lastmodified 
       FROM tmp_schedule tmp)
     UNION
@@ -303,12 +419,16 @@ BEGIN
   END IF;
 
     IF p_lastupdate !="0000-00-00 00:00:00" THEN
-    (SELECT tmp.Schedule_Id scheduleid, ot.Member_Id memberid 
+      (SELECT tmp.Schedule_Id scheduleid, ot.Member_Id memberid 
       FROM tmp_schedule tmp,onduty ot
         WHERE  (tmp.Is_Deleted = 0 or tmp.OD_Is_Deleted = 0)
-        and tmp.Schedule_Id = ot.Schedule_Id);   
+        and tmp.Schedule_Id = ot.Schedule_Id)
+	UNION
+	(SELECT s.Schedule_Id scheduleid, o.Member_Id memberid
+      FROM schedule s, onduty o
+      WHERE s.Creator_Id = ownerid and s.Schedule_Id = o.Schedule_Id and s.Last_Modified > p_lastupdate);   
   ELSE 
-    (SELECT tmp.Schedule_Id scheduleid, ot.Member_Id memberid 
+      (SELECT tmp.Schedule_Id scheduleid, ot.Member_Id memberid 
       FROM tmp_schedule tmp,onduty ot
         WHERE  (tmp.Is_Deleted = 0 or tmp.OD_Is_Deleted = 0)
         and tmp.Schedule_Id = ot.Schedule_Id) 
@@ -322,20 +442,18 @@ BEGIN
   END$$
 
 DROP PROCEDURE IF EXISTS `getServiceByLastUpdate`$$
-CREATE PROCEDURE `getServiceByLastUpdate`(IN ownerid INT, IN p_lastupdate Datetime)
+CREATE DEFINER=`testscheduler1`@`%` PROCEDURE `getServiceByLastUpdate`(IN ownerid INT, IN p_lastupdate Datetime)
 BEGIN
   
   
-  Drop table if exists tmp_service;
+ Drop table if exists tmp_service;
     Create table tmp_service (
   `Service_Id` int(11) NOT NULL,
   `Service_Name` varchar(100) NOT NULL,
   `Description` varchar(200) NOT NULL,
   `SRepeat` int(11) NOT NULL,
-  `Start_Time` time NOT NULL,
-  `End_Time` time NOT NULL,
-  `From_Date` date NOT NULL,
-  `To_Date` date NOT NULL,
+  `Start_Datetime` int(10) NOT NULL,
+  `End_Datetime` int(10) NOT NULL,
   `Alert` int(11) NOT NULL,
   `Creator_Id` int(11) NOT NULL,
   `Is_Deleted` tinyint(1) NOT NULL,
@@ -345,8 +463,8 @@ BEGIN
   `InputId` bit(1) not null) Engine=MyISAM;
   
 
-  Insert into tmp_service (Service_Id,Service_Name,Description,SRepeat,Start_Time,End_Time,From_Date,To_Date,Alert,Creator_Id,Is_Deleted,Created_Time,Last_Modified,Valid, InputId)
-  SELECT distinct s.Service_Id,s.Service_Name,s.Description,s.SRepeat,s.Start_Time,s.End_Time,s.From_Date,s.To_Date,s.Alert,s.Creator_Id,s.Is_Deleted,s.Created_Time,s.Last_Modified,0,0 
+  Insert into tmp_service (Service_Id,Service_Name,Description,SRepeat,Start_Datetime,End_Datetime,Alert,Creator_Id,Is_Deleted,Created_Time,Last_Modified,Valid, InputId)
+  SELECT distinct s.Service_Id,s.Service_Name,s.Description,s.SRepeat,s.Start_Datetime,s.End_Datetime,s.Alert,s.Creator_Id,s.Is_Deleted,s.Created_Time,s.Last_Modified,0,0 
   from service s, onduty o, member m 
   where s.Service_Id = o.Service_Id 
        and o.Member_Id = m.Member_Id 
@@ -354,29 +472,30 @@ BEGIN
        and ((o.Last_Modified > p_lastupdate) or (s.Last_Modified > p_lastupdate));
 
   
-    IF p_lastupdate !="0000-00-00 00:00:00" THEN
-    SELECT tmp.Service_Id serviceid,tmp.Service_Name servicename,tmp.Description descp,
-      tmp.SRepeat srepeat,tmp.Start_Time starttime,tmp.End_Time endtime,tmp.From_Date fromdate,
-      tmp.To_Date todate,tmp.Alert alert,tmp.Creator_Id creatorid,tmp.Is_Deleted isdeleted,
+  IF p_lastupdate !="0000-00-00 00:00:00" THEN
+      (SELECT tmp.Service_Id serviceid,tmp.Service_Name servicename,tmp.Description descp,
+      tmp.SRepeat srepeat,FROM_UNIXTIME(tmp.Start_Datetime) startdatetime,FROM_UNIXTIME(tmp.End_Datetime) enddatetime,tmp.Alert alert,tmp.Creator_Id creatorid,tmp.Is_Deleted isdeleted,
       tmp.Created_Time createdtime,tmp.Last_Modified lastmodified 
-      FROM tmp_service tmp;
+      FROM tmp_service tmp)
+	 UNION
+	 (SELECT Service_Id serviceid, Service_Name servicename, Description descp, SRepeat srepeat,
+      FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert,
+      Creator_Id creatorid, Is_Deleted isdeleted, Created_Time createdtime, Last_Modified lastmodified
+      From service where Creator_Id = ownerId and Last_Modified > p_lastupdate);
   ELSE
-    (SELECT tmp.Service_Id serviceid,tmp.Service_Name servicename,tmp.Description descp,
-      tmp.SRepeat srepeat,tmp.Start_Time starttime,tmp.End_Time endtime,tmp.From_Date fromdate,
-      tmp.To_Date todate,tmp.Alert alert,tmp.Creator_Id creatorid,tmp.Is_Deleted isdeleted,
+       (SELECT tmp.Service_Id serviceid,tmp.Service_Name servicename,tmp.Description descp,
+      tmp.SRepeat srepeat,FROM_UNIXTIME(tmp.Start_Datetime) startdatetime,FROM_UNIXTIME(tmp.End_Datetime) enddatetime,tmp.Alert alert,tmp.Creator_Id creatorid,tmp.Is_Deleted isdeleted,
       tmp.Created_Time createdtime,tmp.Last_Modified lastmodified 
       FROM tmp_service tmp)
     UNION
     (SELECT Service_Id serviceid, Service_Name servicename, Description descp, SRepeat srepeat,
-      Start_Time starttime, End_Time endtime, From_Date fromdate, To_Date todate, Alert alert,
+      FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert,
       Creator_Id creatorid, Is_Deleted isdeleted, Created_Time createdtime, Last_Modified lastmodified
       From service where Creator_Id = ownerId and Is_Deleted = 0);
   END If;
-      
+
   
    DROP TABLE  tmp_service;
    END$$
 
 DELIMITER ;
-
- 
