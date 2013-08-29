@@ -24,11 +24,11 @@ class Members Extends Resource
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 	  
-		$query = "SELECT Member_Email, Member_Id, Member_Name, Mobile_Number, Last_Modified FROM member WHERE Member_Id = '$memberid'";
+		$query = "SELECT Member_Email, Member_Id, Member_Name, Mobile_Number, Last_Modified FROM member WHERE Member_Id = '$memberid' or Member_Email = '$email'";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data)==1) {
-			header('HTTP/1.0 201 This member already exists', true, 201);
+			header('HTTP/1.0 201 This member id or email already exists', true, 201);
 	    }
 		else {
 			// Insert this member if no exists
