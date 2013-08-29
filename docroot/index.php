@@ -25,8 +25,10 @@
 	// 
 	//  For testing:
 	// http://127.0.0.1/cschedule/creator?
-	//  For production:
+	// url_elements[2]
+	//  For production or testing environment on hosting service
 	// http://servicescheduler.net/creator?
+	// url_element1[1]
 	$controller_name = ucfirst($request->url_elements[2]);
 	
 	if (class_exists($controller_name)) {
