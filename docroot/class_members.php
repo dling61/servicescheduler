@@ -22,7 +22,7 @@ class Members Extends Resource
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 	  
-		$query = "SELECT Member_Email, Member_Id, Member_Name, Mobile_Number, Last_Modified FROM member WHERE Member_Id = '$memberid' or Member_Email = '$email'";
+		$query = "SELECT Member_Email, Member_Id, Member_Name, Mobile_Number, Last_Modified FROM member WHERE Creator_Id = '$ownerid' and (Member_Id = '$memberid' or Member_Email = '$email')";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data)==1) {
