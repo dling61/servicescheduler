@@ -22,20 +22,21 @@ class Members Extends Resource
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 	  
-		$query = "SELECT Member_Email, Member_Id, Member_Name, Mobile_Number, Last_Modified FROM member WHERE Creator_Id = '$ownerid' and (Member_Id = '$memberid' or Member_Email = '$email')";
+		$query = "SELECT Member_Email, Member_Id, Is_Deleted FROM member WHERE Creator_Id = '$ownerid' and  Member_Email = '$email' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
-        if (mysqli_num_rows($data)==1) {
+        if (mysqli_num_rows($data) >= 1) {
 			header('HTTP/1.0 201 This email or member_id already exists', true, 201);
 	    }
 		else {
 			// Insert this member if no exists
 			$queryinsert = "insert into member(Member_Id,Member_Email,Member_Name,Mobile_Number,Is_Registered,Creator_Id, Created_Time, Last_Modified)
 			                 values('$memberid','$email','$membername','$mobile',0, '$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP())"; 
-			$result = mysqli_query($dbc,$queryinsert) or die("Error is: \n ".mysqli_error($dbc));
-			if ($result !== TRUE) {
-				// if error, roll back transaction
-				mysqli_rollback($dbc);
+			$result = mysqli_query($dbc,$queryinsert); 
+			if ($result != TRUE) {
+				// throw the error 201 and return to client
+				header('HTTP/1.0 201 member id exists', true, 201);
+				die();
 			}
 			//$result->close();  --- Don't know why it gave error
 			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
@@ -55,7 +56,7 @@ class Members Extends Resource
 		$query = "SELECT * FROM member WHERE Member_Id = '$memberid'";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
-        if (mysqli_num_rows($data)==1) {
+        if (mysqli_num_rows($data) == 1) {
 		    // Member exists and go ahead to update it
 		
 			$timestamp = date('Y-m-d H:i:s');
