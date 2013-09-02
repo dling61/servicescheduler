@@ -35,7 +35,7 @@ class Members Extends Resource
 			$result = mysqli_query($dbc,$queryinsert); 
 			if ($result != TRUE) {
 				// throw the error 201 and return to client
-				header('HTTP/1.0 201 member id exists', true, 201);
+				header('HTTP/1.0 401 member id exists', true, 401);
 				die();
 			}
 			//$result->close();  --- Don't know why it gave error
