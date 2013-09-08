@@ -105,6 +105,7 @@ class Creator Extends Resource
 		mysqli_close($dbc);
 	}
 
+	// This is to process a reset password request 
 	Protected function resetpw($body_parms) {
 	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
@@ -202,6 +203,62 @@ class Creator Extends Resource
 		
 	}
 	
+	// A user can type in a password twice from App or web site to reset the password
+	// This is to reset the password entered from a user
+	// parameters are passed in instead of body_params
+	Protected function setpassword($parms) {
+	
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+		 
+		$email = $parms['email'];
+		$token = $parms['token'];
+		$password = $parms['password'];
+		 
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+	  
+        $query = "SELECT token FROM resetpassword WHERE Email = '$email' and Token = '$token' and Is_Done = 0";
+					
+		$data = mysqli_query($dbc, $query);
+		
+		if (DEBUG_FLAG == 1)
+			logserveronce("Setpassword","POST", 'Email: '.$email.' '.'Token: '.$token, "");
+		
+        if (mysqli_num_rows($data) == 1) {
+			//update the password
+			$updatepw = "update user set Password = SHA('$password'),Last_Modified = NOW() WHERE Email = '$email'"; 
+						
+			$result = mysqli_query($dbc,$updatepw) or die("Error is: \n ".mysqli_error($dbc));
+			if ($result !== TRUE) {
+				// if error, roll back transaction
+				header('HTTP/1.0 201 Update password failed', true, 201);
+				$data2 = json_encode(array('code'=> 201, 'message' => 'Update password failed'));
+			    echo $data2;
+				exit;
+			}
+			
+			$updatequery = "update resetpassword set Is_Done = 1, Last_Modified = NOW() WHERE Email = '$email' and Token = '$token'"; 
+			
+			$result = mysqli_query($dbc,$updatequery) or die("Error is: \n ".mysqli_error($dbc));
+			if ($result !== TRUE) {
+				// if error, roll back transaction
+				header('HTTP/1.0 201 Update password failed', true, 201);
+				$data2 = json_encode(array('code'=> 201, 'message' => 'Update password reset table failed'));
+			    echo $data2;
+				exit;
+			}	
+		}
+		else {
+				header('HTTP/1.0 201 Update password failed', true, 201);
+				$data2 = json_encode(array('code'=> 201, 'message' => 'No password found'));
+			    echo $data2;
+				exit;
+		}
+		
+		$data->close();
+		mysqli_close($dbc);
+		
+	}
+	
 	// this is to retrieve the latest service/member/schedule IDs from the server
 	Protected function pgetlastId($ownerid) {
 	
@@ -240,7 +297,6 @@ class Creator Extends Resource
 		mysqli_close($dbc);
 	}
 	
-	
 	// this is the API to get the latest service/member/schedule ID
 	// GET http://[domain name]/creator/1234
 	// "1234" is the caller's ownerid
@@ -265,11 +321,14 @@ class Creator Extends Resource
 		else if ($request->parameters['action'] == 'signin') {
 		    $this->signin($request->body_parameters);
 		} 
-		else if ($this->parameters['action'] == 'resetpw') {
+		else if ($request->parameters['action'] == 'resetpw') {
 		    $this->resetpw($request->body_parameters);
 		} 
-		else if ($this->parameters['action'] == 'settoken') {
+		else if ($request->parameters['action'] == 'settoken') {
 		    $this->settoken($request->body_parameters);
+		} 
+		else if ($request->parameters['action'] == 'setpassword') {
+		    $this->setpassword($request->parameters);
 		} 
     }
 
