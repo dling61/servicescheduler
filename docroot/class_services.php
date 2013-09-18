@@ -162,25 +162,25 @@ class Services Extends Resource
 		mysqli_close($dbc);
 	}
 	
-	// delete a frind shared with a service
-	Protected function pdelete_shareservices($serviceid, $email) {
+	// delete a member shared with a service
+	Protected function pdelete_sharedmembers($serviceid, $memberid) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
-		$query = "SELECT * FROM shareservice WHERE Service_Id = '$serviceid' and Email = '$email' and Is_Deleted = 0";
+		$query = "SELECT * FROM sharedmember WHERE Service_Id = '$serviceid' and Member_Id = '$memberid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data)==0) {
-			header('HTTP/1.0 201 This sharedwith email doesn\'t exist', true, 201);
+			header('HTTP/1.0 201 This member doesn\'t shared with the service', true, 201);
 			exit;
 	    }
 		else {
-			// Delete this shared email by setting the flag Is_Deleted to 1
-			$update = "update shareservice set ".
+			// Delete this shared member by setting the flag Is_Deleted to 1
+			$update = "update sharedmember set ".
 						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP() ".
-						" where Service_Id = '$serviceid' and Email = '$email'";
+						" where Service_Id = '$serviceid' and Member_Id = '$memberid'";
 			$result = mysqli_query($dbc,$update) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
-				header('HTTP/1.0 204 Failed to delete shareservice', true, 204);
+				header('HTTP/1.0 204 Failed to delete shared member', true, 204);
 				exit;
 			}
 			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
@@ -192,7 +192,16 @@ class Services Extends Resource
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 	
 		// call a stored procedure to get the services to be returned to caller
-		$data = mysqli_query($dbc, "CALL getServiceByLastUpdate('$ownerid', '$lastupdatetime')") or die("Error is: \n ".mysqli_error($dbc));
+		//$data = mysqli_query($dbc, "CALL getServiceByLastUpdate('$ownerid', '$lastupdatetime')") or die("Error is: \n ".mysqli_error($dbc));
+		$query = "(SELECT tmp.Service_Id serviceid,tmp.Service_Name servicename,tmp.Description descp, ".
+		         " tmp.SRepeat srepeat,FROM_UNIXTIME(tmp.Start_Datetime) startdatetime,FROM_UNIXTIME(tmp.End_Datetime) enddatetime,tmp.Alert alert,tmp.Creator_Id creatorid,tmp.Is_Deleted isdeleted, ".
+                 " tmp.Created_Time createdtime,tmp.Last_Modified lastmodified FROM service tmp where ownerid = '$ownerid') ".
+                 " UNION ".
+                 "(SELECT Service_Id serviceid, Service_Name servicename, Description descp, SRepeat srepeat,
+      FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert,
+      Creator_Id creatorid, Is_Deleted isdeleted, Created_Time createdtime, Last_Modified lastmodified
+      From service where Creator_Id = ownerId and Is_Deleted = 0); ";
+		$data = mysqli_query($dbc, $data) or die("Error is: \n ".mysqli_error($dbc));
 		
 		$return_arr = array();
 		$serviceid_arr = array();
@@ -224,6 +233,7 @@ class Services Extends Resource
 				   $one_arr['creatorid'] = $row0['creatorid'];
 				   $one_arr['createdtime'] = $row0['createdtime'];
 				   $one_arr['lastmodified'] = $row0['lastmodified'];
+				   $one_arr['sharedrole'] = $row0['sharedrole'];
 				   
 				   $services_arr[$i] = $one_arr;
 				   $i++;			   
@@ -245,26 +255,90 @@ class Services Extends Resource
 		mysqli_close($dbc);	
 	}
 	
-	// This is for shareservice API to share a service with some emails
-	Protected function insert_shareservices($serviceid, $ownerid, $sharedwith_param) {
+	// This is for sharedmember API to get the latest shared members
+	Protected function pgetlastupdate_sm($serviceid, $ownerid, $lastupdatetime) {
+	    
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
-		//go ahead to insert email in the shareservice table
-		// TBD: don't handle the case in which a deleted email is being added back again.
-		$email = $sharedwith_param;
+	
+		// call a stored procedure to get the services to be returned to caller
+		$query = "SELECT sm.Is_Deleted isdeleted, sm.Member_Id memberid, m.Member_Email memberemail, m.Member_Name membername, m.Mobile_Number mobilenumber, ".
+		    " sm.Creator_Id creatorid, sm.Service_Id serviceid, sm.Created_Time createdtime, sm.Last_Modified lastmodified ".
+ 		    " FROM sharedmember sm, member m where sm.Member_Id = m.Member_Id and sm.Service_Id = '$serviceid' and ".
+     		"(sm.Last_Modified > '$lastupdatetime' or m.Last_Modified > '$lastupdatetime')";
+			
+        $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc)); 
 		
-		$query = "SELECT * FROM shareservice WHERE Service_Id = '$serviceid' and Email = '$email'";
+		$return_arr = array();
+		$memberid_arr = array();
+		$members_arr = array();
+		
+		if(mysqli_num_rows($data) > 0) {
+			$i = 0;
+			$j = 0;
+			while($row0 = mysqli_fetch_array($data)){
+			   $isdeleted = $row0['isdeleted'];
+				// if it's deleted, just add it to "deletedsmembers"
+			   if ($isdeleted == 1) {
+				 $memberid_arr[$j] = $row0['memberid'];
+				 $j++;
+			   }
+			   else {
+				   $one_arr = array();
+				  
+				   $one_arr['memberid'] = $row0['memberid'];
+				   $one_arr['memberemail'] = $row0['memberemail'];
+				   $one_arr['membername'] = $row0['membername'];
+				   $one_arr['mobilenumber'] = $row0['mobilenumber'];
+				   $one_arr['creatorid'] = $row0['creatorid'];
+				   $one_arr['serviceid'] = $row0['serviceid'];
+				   $one_arr['createdtime'] = $row0['createdtime'];
+				   $one_arr['lastmodified'] = $row0['lastmodified'];
+				   
+				   $members_arr[$i] = $one_arr;
+				   $i++;			   
+			   }   
+			   
+			} // while end
+		} // if end
+		$return_arr['deletedsmembers'] = $memberid_arr;
+		$return_arr['sharedmembers'] = $members_arr;
+         
+		$data2 = json_encode($return_arr);
+		echo $data2;
+		
+		// logserver if debug flag is set to 1
+		if (DEBUG_FLAG == 1)
+		    logserver_response($this->lastid,$data2);
+      
+		$data->close();
+		mysqli_close($dbc);	
+	}
+	
+	// This is for sharedmember API to share a service with a member
+	Protected function insert_sharedmembers($serviceid, $body_param) {
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+		
+		$ownerid = $body_param['ownerid'];
+		$memberid = $body_param['memberid'];
+		$sharedrole = $body_param['sharedrole'];
+		
+		$query = "SELECT * FROM sharedmember WHERE Service_Id = '$serviceid' and Member_Id = '$memberid'";
 		$data = mysqli_query($dbc, $query) or die(mysqli_error());
 	
 		if (mysqli_num_rows($data)==1) {
-			header('HTTP/1.0 201 This service exists already', true, 201);
+			header('HTTP/1.0 201 This shared member exists already', true, 201);
+			$data2 = json_encode(array('code'=> 201, 'message' => 'This shared member exists already'));
+			echo $data2;
+			exit;	
 		}
-		$queryinsert1 = "insert into shareservice".
-				 " (Service_Id, Email,Is_Deleted,Creator_Id,Created_Time, Last_Modified) ".
-				 "values('$serviceid','$email',0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP())";
+		$queryinsert1 = "insert into sharedmember".
+				 " (Service_Id, Member_Id, Shared_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified) ".
+				 "values('$serviceid','$memberid', '$sharedrole',0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP())";
 		$result = mysqli_query($dbc,$queryinsert1);
 		if ($result !== TRUE) {
-			header('HTTP/1.0 203 failed to inert email', true, 203);
-			echo mysqli_error($dbc);
+			header('HTTP/1.0 203 failed to inert shared members', true, 203);
+			$data2 = json_encode(array('code'=> 203, 'message' => 'failed to inert shared members'));
+			echo $data2;
 			exit;							
 		}
 		mysqli_free_result($data);
@@ -275,20 +349,30 @@ class Services Extends Resource
 		mysqli_close($dbc);
 	}
 	
-	// This is the GET calls to get the list of services and list of emails shared on the service
-	//  1. http://servicescheduler.net/service?ownerid=12143&lastupdatetime=121333000
-	//  2. http://servicescheduler.net/service/1234/shareservice?ownerid=12434&lastupdatetime=121443232
+	// GET method here is to handle 2 cases
+	//  1. http://servicescheduler.net/services?ownerid=12143&lastupdatetime=121333000
+	//  2. http://servicescheduler.net/services/1234/sharedmembers?ownerid=12434&lastupdatetime=121443232
+	// 
 	public function get($request) {
         $ownerid = $request->parameters['ownerid'];
 		$lastupdatetime = urldecode($request->parameters['lastupdatetime']);
 	    
 		header('Content-Type: application/json; charset=utf8');
-		$this->pgetlastupdate($ownerid, $lastupdatetime);
+		$lastElement = end($request->url_elements);
+		reset($request->url_elements);
+		if ($lastElement == "services") {
+			$this->pgetlastupdate($ownerid, $lastupdatetime);
+		}
+		else if ($lastElement == "sharedmembers") {
+			// handle sharedmembers
+			$serviceid  = $request->url_elements[count($request->url_elements)-2];
+			$this->pgetlastupdate_sm($serviceid, $ownerid, $lastupdatetime);
+		}
     }
 
 	// This is the POST call to add a new service and share a service with a email
 	//   1. POST http://servicescheduler.net/services
-	//   2. POST http://servicescheduler.net/services/1234/shareservice
+	//   2. POST http://servicescheduler.net/services/1234/sharedmembers
     public function post($request) {
 		$parameters1 = array();
 
@@ -303,10 +387,10 @@ class Services Extends Resource
 				}
 			}
 			$this->insert($request->body_parameters['ownerid'], $parameters1);
-		} else if ($lastElement == "shareservices") {
+		} else if ($lastElement == "sharedmembers") {
 		    $serviceid  = $request->url_elements[count($request->url_elements)-2];
-			 //share service method
-			$this->insert_shareservices($serviceid, $request->body_parameters['ownerid'], $request->body_parameters['sharedwith']);
+			 //share member method
+			$this->insert_sharedmembers($serviceid, $request->body_parameters);
 		}
 	    
     }
@@ -331,9 +415,10 @@ class Services Extends Resource
     }
 	
 	
-	// This is the DELETE call to delete a service and delete an email from the email list shared on the service
+	// This is the DELETE call to delete a service and delete a shared member from the service
+	// It should have NO message body for Delete (based on the HTTP specs)
 	//   1. DELETE http://servicescheduler.net/service
-	//   2. DELETE http://servicescheduler.net/service/1234/shareservice
+	//   2. DELETE http://servicescheduler.net/service/1234/sharedmembers
 	public function delete($request) {
 		$last2Element = $request->url_elements[count($request->url_elements)-2];
 	    
@@ -344,13 +429,12 @@ class Services Extends Resource
 			reset($request->url_elements);
 			$this->pdelete($serviceid);
 		}
-		else if ($last2Element == "shareservices") {
-			// Delete a friend email from shareservice
+		else if ($last2Element == "sharedmembers") {
+			// Delete a member email from sharedmembers
 		    $serviceid = $request->url_elements[count($request->url_elements)-3];
-			$email =  end($request->url_elements);
+			$memberid =  end($request->url_elements);
 			reset($request->url_elements);
-			$this->pdelete_shareservices($serviceid, $email);
-			
+			$this->pdelete_sharedmembers($serviceid, $memberid);
 		}
 		
     }

@@ -92,7 +92,7 @@ function logserver($resource, $method, $body)
 	If you made this request, then please click on the link below.
 	<br>
 	<br>
-     <a href="http://www.servicescheduler.net/cschedule/resetpw.php?email='.$email.'&sig='.$token.'">Reset Password</a><br>
+     <a href="http://'.REST_SERVER.'/cschedule/resetpw.php?email='.$email.'&sig='.$token.'">Reset Password</a><br>
 	<br>
 	<br>
 	This link will work for 2 hours or until you reset your password.<br>
