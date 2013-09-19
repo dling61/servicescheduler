@@ -1,6 +1,6 @@
 <?php # Script 7.8 - password.php
 	// This page lets a user change their password.
-	require_once('../apitest/constants.php');
+	//require_once('../apitest/constants.php');
 	//require_once('../constants.php');
 
 	// Check if the form has been submitted.
