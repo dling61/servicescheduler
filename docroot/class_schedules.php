@@ -7,8 +7,8 @@ require_once('common_fn.php');
 class Schedules Extends Resource
 {
 	
-    public function __construct() {
-        parent::__construct();
+    public function __construct($request) {
+        parent::__construct($request);
 		
     }
 	protected $lastid;
@@ -151,7 +151,9 @@ class Schedules Extends Resource
 	/**
 	  This is to delete the schedule
 	**/
-	Protected function pdelete($scheduleid) {
+	Protected function pdelete($scheduleid, $body_parms) {
+	    $ownerid = $body_parms['ownerid'];
+		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
 		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$scheduleid' and Is_Deleted = 0";
@@ -166,7 +168,7 @@ class Schedules Extends Resource
 			mysqli_autocommit($dbc, FALSE);
 			// update this schedule by setting the flag Is_Deleted to 1
 			$queryupdate = "update schedule set ".
-						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP() ".
+						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 						" where Schedule_Id = '$scheduleid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
@@ -178,7 +180,7 @@ class Schedules Extends Resource
 			else {
 				// first to delete the existing relationship
 				$querydelete = "update onduty set ".
-				               " Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP() ".
+				               " Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 							   " WHERE Schedule_Id = '$scheduleid'";
 				
 				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
@@ -356,14 +358,14 @@ class Schedules Extends Resource
     }
 	
 	/**
-	   There is no body in the DELETE HTTP Method
+	   There is a body element "ownerid" in the DELETE HTTP Method 
 	**/
 	public function delete($request) {
-	     // logic to handle an HTTP PUT request goes here
+	     // logic to handle an HTTP DELETE request goes here
 		header('Content-Type: application/json; charset=utf8');
 		$scheduleid = end($request->url_elements);
 		reset($request->url_elements);
-		$this->pdelete($scheduleid);
+		$this->pdelete($scheduleid, $request->body_parameters);
     }
 
 

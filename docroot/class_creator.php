@@ -10,7 +10,8 @@ class Creator Extends Resource
 	protected $action;
 	protected $lastid;
 	
-	public function __construct() {
+	public function __construct($request) {
+		 parent::__construct($request);
 	}	
 	
 	// this is to register 
@@ -313,7 +314,6 @@ class Creator Extends Resource
 
 	// This is the API to register a user in the servre and login in
     public function post($request) {
-		
 		header('Content-Type: application/json; charset=utf8');
 	    if ($request->parameters['action'] == 'register') {
 			$this->register($request->body_parameters);

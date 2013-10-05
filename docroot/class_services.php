@@ -8,8 +8,8 @@ require_once('class_request.php');
 class Services Extends Resource
 {
 	
-   public function __construct() {
-        parent::__construct();
+   public function __construct($request) {
+        parent::__construct($request);
 	}	
 	
 	protected $lastid;
@@ -93,8 +93,42 @@ class Services Extends Resource
 		mysqli_close($dbc);
 	}
 	
+	// This is to update the role for the activity shared with a member
+	Protected function update_sm($serviceid, $memberid, $body_parms) {
+		$ownerid = $body_parms['ownerid'];
+		$sharedrole= $body_parms['sharedrole'];
+		
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		$query = "SELECT * FROM sharedmember WHERE Service_Id = '$serviceid' and Member_Id = '$memberid' ";
+        $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
+		
+        if (mysqli_num_rows($data)==1) {
+		    // shared member exists and go ahead to update it
+			$queryupdate = "update sharedmember set ".
+						"Shared_Role = '$sharedrole', Last_Modified = UTC_TIMESTAMP, Last_Modified_Id = '$ownerid'".
+						"WHERE Service_Id = '$serviceid' and Member_Id = '$memberid'";
+			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
+			if ($result !== TRUE) {
+				// if error, roll back transaction
+				header('HTTP/1.0 201 This shared member can not be updated', true, 201);
+				exit;
+			}
+			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+			//echo json_encode($data2);
+			echo $data2;	
+		}
+		else {
+			header('HTTP/1.0 202 This shared member doesn\'t exist', true, 202);
+		}
+		
+		$data->close();
+		mysqli_close($dbc);	
+	}
+	
 	// delete a service
-	Protected function pdelete($serviceid) {
+	Protected function pdelete($serviceid, $body_parms) {
+		$ownerid = $body_parms['ownerid'];
+		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
 		$query = "SELECT * FROM service WHERE Service_Id = '$serviceid' and Is_Deleted = 0";
@@ -111,7 +145,7 @@ class Services Extends Resource
 	
 			// Delete this service by setting the flag Is_Deleted to 1
 			$queryupdate = "update service set ".
-						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP() ".
+						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid'".
 						" where Service_Id = '$serviceid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
@@ -127,7 +161,7 @@ class Services Extends Resource
 				if (mysqli_num_rows($data) != 0) {
 					// second to delete the existing relationship
 					$queryupdate = "update schedule set ".
-							" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP() ".
+							" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 							" where Service_Id = '$serviceid'";
 			
 					$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
@@ -140,7 +174,7 @@ class Services Extends Resource
 					else {   
 						// update the existing relationship
 						$querydelete = "update onduty set ".
-							" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP() ".
+							" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 							" where Service_Id = '$serviceid'";
 					
 						$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
@@ -162,8 +196,10 @@ class Services Extends Resource
 		mysqli_close($dbc);
 	}
 	
-	// delete a member shared with a service
-	Protected function pdelete_sharedmembers($serviceid, $memberid) {
+	// remove a sharing from a member with a service
+	Protected function pdelete_sharedmembers($serviceid, $memberid, $body_parms) {
+		$ownerid = $body_parms['ownerid'];
+		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
 		$query = "SELECT * FROM sharedmember WHERE Service_Id = '$serviceid' and Member_Id = '$memberid' and Is_Deleted = 0";
@@ -176,7 +212,7 @@ class Services Extends Resource
 		else {
 			// Delete this shared member by setting the flag Is_Deleted to 1
 			$update = "update sharedmember set ".
-						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP() ".
+						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 						" where Service_Id = '$serviceid' and Member_Id = '$memberid'";
 			$result = mysqli_query($dbc,$update) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
@@ -262,7 +298,7 @@ class Services Extends Resource
 	
 		// call a stored procedure to get the services to be returned to caller
 		$query = "SELECT sm.Is_Deleted isdeleted, sm.Member_Id memberid, m.Member_Email memberemail, m.Member_Name membername, m.Mobile_Number mobilenumber, ".
-		    " sm.Creator_Id creatorid, sm.Service_Id serviceid, sm.Created_Time createdtime, sm.Last_Modified lastmodified ".
+		    " sm.Creator_Id creatorid, sm.Service_Id serviceid, sm.Created_Time createdtime, sm.Last_Modified lastmodified, sm.Shared_Role sharedrole ".
  		    " FROM sharedmember sm, member m where sm.Member_Id = m.Member_Id and sm.Service_Id = '$serviceid' and ".
      		"(sm.Last_Modified > '$lastupdatetime' or m.Last_Modified > '$lastupdatetime')";
 			
@@ -293,6 +329,7 @@ class Services Extends Resource
 				   $one_arr['serviceid'] = $row0['serviceid'];
 				   $one_arr['createdtime'] = $row0['createdtime'];
 				   $one_arr['lastmodified'] = $row0['lastmodified'];
+				   $one_arr['sharedrole'] = $row0['sharedrole'];
 				   
 				   $members_arr[$i] = $one_arr;
 				   $i++;			   
@@ -391,32 +428,43 @@ class Services Extends Resource
 		    $serviceid  = $request->url_elements[count($request->url_elements)-2];
 			 //share member method
 			$this->insert_sharedmembers($serviceid, $request->body_parameters);
-		}
-	    
+		}   
     }
 	
-	// update a service with the service Id
-	// 1. PUT http://servicescheduler.net/services/1234
+	// update a service with the service Id and update a role shared with activity
+	// 1. PUT http://[api_domain_name]/services/1234
+	// 2. PUT http://[api_domain_name]/services/1234/sharedmembers/1111
 	public function put($request) {
         $parameters1 = array();
 		
-		if ($request->body_parameters['services']) {
-			foreach($request->body_parameters['services'] as $param_name => $param_value) {
-							$parameters1[$param_name] = $param_value;
-			}
-		}
-
 		header('Content-Type: application/json; charset=utf8');
-		//handle different resources
-		$serviceid = end($request->url_elements);
-		reset($request->url_elements);
-		$this->update($serviceid, $request->body_parameters['ownerid'], $parameters1);
-	    
+		$last2Element = $request->url_elements[count($request->url_elements)-2];
+		
+		if ($last2Element == "services") {
+			if ($request->body_parameters['services']) {
+				foreach($request->body_parameters['services'] as $param_name => $param_value) {
+								$parameters1[$param_name] = $param_value;
+				}
+			}
+
+			//handle different resources
+			$serviceid = end($request->url_elements);
+			reset($request->url_elements);
+			$this->update($serviceid, $request->body_parameters['ownerid'], $parameters1);
+	    }
+		else if ($last2Element == "sharedmembers") {
+			//get memberid and serviceid 
+			$memberid = end($request->url_elements);
+			reset($request->url_elements);
+			$serviceid = $request->url_elements[count($request->url_elements)-3];
+			$this->update_sm($serviceid, $memberid, $request->body_parameters);
+		
+		}
     }
 	
 	
 	// This is the DELETE call to delete a service and delete a shared member from the service
-	// It should have NO message body for Delete (based on the HTTP specs)
+	// It can have message body for Delete (based on the latest HTTP specs)
 	//   1. DELETE http://servicescheduler.net/service
 	//   2. DELETE http://servicescheduler.net/service/1234/sharedmembers
 	public function delete($request) {
@@ -427,14 +475,15 @@ class Services Extends Resource
 			// Delete service
 			$serviceid = end($request->url_elements);
 			reset($request->url_elements);
-			$this->pdelete($serviceid);
+			$this->pdelete($serviceid, $request->body_parameters);
 		}
 		else if ($last2Element == "sharedmembers") {
 			// Delete a member email from sharedmembers
 		    $serviceid = $request->url_elements[count($request->url_elements)-3];
 			$memberid =  end($request->url_elements);
 			reset($request->url_elements);
-			$this->pdelete_sharedmembers($serviceid, $memberid);
+			
+			$this->pdelete_sharedmembers($serviceid, $memberid, $request->body_parameters);
 		}
 		
     }

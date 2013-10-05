@@ -7,8 +7,8 @@ require_once('common_fn.php');
 class Members Extends Resource
 {
 	
-    public function __construct() {
-        parent::__construct();
+    public function __construct($request) {
+        parent::__construct($request);
 		
     }
 	protected $lastid;

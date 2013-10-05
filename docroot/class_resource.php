@@ -4,20 +4,24 @@ abstract class Resource
     protected static $httpMethods = array("GET", "POST", "HEAD","PUT", "OPTIONS", "DELETE", "TRACE", "CONNECT");
 
 	protected $version;
-	
+	/**
 	public function __construct() {
     }
-
-	/**
-    public function __construct($version, array $params) {
-        $this->params = $params;
-		// handle the existing clients
-		if ($version == null) 
+     **/
+	
+    public function __construct($request) {
+		if (isset($request->parameters['version'])) {
+			$_version = $request->parameters['version'];
+			// handle the existing clients
+			if ($_version == null) 
+				$this->version = 1;
+			else 
+				$this->version = $_version;
+		}
+		else
 			$this->version = 1;
-		else 
-			$this->version = $version;
     }
-  
+    /**
     protected function allowedHttpMethods() {
 
         $myMethods = array();

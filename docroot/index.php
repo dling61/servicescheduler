@@ -11,15 +11,18 @@
 	//Define our id-key pairs
 	$applications = array(
 	    // for IOS
-		'APP001' => '28e336ac6c9423d946ba02dddd6a2632', //randomly generated app key 
+		'IOS' => '28e336ac6c9423d946ba02dddd6a2632', //randomly generated app key 
 		// for Andriod
-		'APP002' => '28e336ac6c9423d946ba02d19c6a2632', //randomly generated app key 
+		'ANDROID' => '28e336ac6c9423d946ba02d19c6a2633', //randomly generated app key 
 		// for Web App
-		'APP003' => '28e336ac6c9423d946ba02d19c6a2632', //randomly generated app key 
+		'WEB' => '28e336ac6c9423d946ba02d19c6a2634', //randomly generated app key 
 	);
 
 	//get all the information from http call
 	$request = new Request();
+	
+	// check security code
+	checkscode($request, $applications);
 
 	// TDB:this is the place to get the controller(resource); in the release it should "1" instead of 2 for url_element[x]
 	// 
@@ -32,10 +35,28 @@
 	$controller_name = ucfirst($request->url_elements[2]);
 	
 	if (class_exists($controller_name)) {
-		$controller = new $controller_name();
+		$controller = new $controller_name($request);
 		$action_name = strtolower($request->action);
 		$result = $controller->$action_name($request);
     }
 
+	function checkscode($request, $applications) {
+	    if (isset($request->parameters['device']) and isset($request->parameters['scode'])) {
+			$_device = $request->parameters['device'];
+			$_scode =  $request->parameters['scode'];
+			
+			if ($applications[$_device] != $_scode) {
+			    echo "hello";
+				header('Content-Type: application/json; charset=utf8');
+				header('HTTP/1.0 204 Error in security code', true, 204);
+				exit;
+			}
+		}
+		else {
+			header('Content-Type: application/json; charset=utf8');
+			header('HTTP/1.0 204 Error in security code', true, 204);
+			exit;
+		}
+	}
 	
 ?>
