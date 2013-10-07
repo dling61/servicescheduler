@@ -173,15 +173,18 @@ class Services Extends Resource
 					}
 					else {   
 						// update the existing relationship
-						$querydelete = "update onduty set ".
+						//$querydelete = "update onduty set ".
+						//	" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+						//	" where Service_Id = '$serviceid'";
+						
+						$querydelete = "update sharedmember set ".
 							" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 							" where Service_Id = '$serviceid'";
-					
 						$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
 						if ($result !== TRUE) {
 							// if error, roll back transaction
 							mysqli_rollback($dbc);
-							header('HTTP/1.0 204 Failed to delete onduty', true, 204);
+							header('HTTP/1.0 204 Failed to delete sharedrole in sharedmember', true, 204);
 							exit;
 						}
 						mysqli_commit($dbc);
@@ -226,18 +229,24 @@ class Services Extends Resource
 	
 	Protected function pgetlastupdate($ownerid, $lastupdatetime) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
-	
 		// call a stored procedure to get the services to be returned to caller
 		//$data = mysqli_query($dbc, "CALL getServiceByLastUpdate('$ownerid', '$lastupdatetime')") or die("Error is: \n ".mysqli_error($dbc));
-		$query = "(SELECT tmp.Service_Id serviceid,tmp.Service_Name servicename,tmp.Description descp, ".
-		         " tmp.SRepeat srepeat,FROM_UNIXTIME(tmp.Start_Datetime) startdatetime,FROM_UNIXTIME(tmp.End_Datetime) enddatetime,tmp.Alert alert,tmp.Creator_Id creatorid,tmp.Is_Deleted isdeleted, ".
-                 " tmp.Created_Time createdtime,tmp.Last_Modified lastmodified FROM service tmp where ownerid = '$ownerid') ".
+		
+		$query = "(SELECT Service_Id serviceid,Service_Name servicename,Description descp, ".
+				 " SRepeat srepeat,FROM_UNIXTIME(Start_Datetime) startdatetime,FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert, Creator_Id creatorid,Is_Deleted isdeleted,".
+                 " Created_Time createdtime,Last_Modified lastmodified, 0 as sharedrole ".
+				 " FROM service where creator_id = '$ownerid' and Last_Modified > '$lastupdatetime') ".
                  " UNION ".
-                 "(SELECT Service_Id serviceid, Service_Name servicename, Description descp, SRepeat srepeat,
-      FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert,
-      Creator_Id creatorid, Is_Deleted isdeleted, Created_Time createdtime, Last_Modified lastmodified
-      From service where Creator_Id = ownerId and Is_Deleted = 0); ";
-		$data = mysqli_query($dbc, $data) or die("Error is: \n ".mysqli_error($dbc));
+                 " (SELECT distinct s.Service_Id serviceid ,s.Service_Name servicename,s.Description descp, ".
+                 " s.SRepeat srepeat,FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime,s.Alert alert,s.Creator_Id creatorid, ".
+                 " o.Is_Deleted isdeleted,s.Created_Time createdtime,s.Last_Modified lastmodified,o.Shared_Role sharedrole ".
+                 " from service s, sharedmember o, member m ".
+                 " where s.Service_Id = o.Service_Id ".
+                 " and o.Member_Id = m.Member_Id ".
+                 " and m.Member_Email = (select Email from user where User_Id = '$ownerid') ". 
+                 " and ((o.Last_Modified > '$lastupdatetime') or (s.Last_Modified > '$lastupdatetime')))";
+
+		$data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
 		$return_arr = array();
 		$serviceid_arr = array();
@@ -393,7 +402,7 @@ class Services Extends Resource
 	public function get($request) {
         $ownerid = $request->parameters['ownerid'];
 		$lastupdatetime = urldecode($request->parameters['lastupdatetime']);
-	    
+	   
 		header('Content-Type: application/json; charset=utf8');
 		$lastElement = end($request->url_elements);
 		reset($request->url_elements);
