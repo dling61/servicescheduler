@@ -201,6 +201,7 @@ class Schedules Extends Resource
 	
 	/**
 	    This method is for retrieving all schedules associated with the device owner assigned to it
+		This API is deprecated because sharedmember concept is used in 1.2.0
 	**/
 	Protected function pgetlastupdate($ownerid, $lastupdatetime) {
 		$return_arr = array();
