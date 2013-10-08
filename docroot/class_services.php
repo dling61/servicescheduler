@@ -126,9 +126,8 @@ class Services Extends Resource
 	}
 	
 	// delete a service
-	Protected function pdelete($serviceid, $body_parms) {
-		$ownerid = $body_parms['ownerid'];
-		
+	Protected function pdelete($serviceid, $ownerid) {
+	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
 		$query = "SELECT * FROM service WHERE Service_Id = '$serviceid' and Is_Deleted = 0";
@@ -200,8 +199,7 @@ class Services Extends Resource
 	}
 	
 	// remove a sharing from a member with a service
-	Protected function pdelete_sharedmembers($serviceid, $memberid, $body_parms) {
-		$ownerid = $body_parms['ownerid'];
+	Protected function pdelete_sharedmembers($serviceid, $memberid, $ownerid) {
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
@@ -601,15 +599,16 @@ class Services Extends Resource
 			// Delete service
 			$serviceid = end($request->url_elements);
 			reset($request->url_elements);
-			$this->pdelete($serviceid, $request->body_parameters);
+			$ownerid = $request->parameters['ownerid'];
+			$this->pdelete($serviceid, $ownerid);
 		}
 		else if ($last2Element == "sharedmembers") {
 			// Delete a member email from sharedmembers
 		    $serviceid = $request->url_elements[count($request->url_elements)-3];
 			$memberid =  end($request->url_elements);
 			reset($request->url_elements);
-			
-			$this->pdelete_sharedmembers($serviceid, $memberid, $request->body_parameters);
+			$ownerid = $request->parameters['ownerid'];
+			$this->pdelete_sharedmembers($serviceid, $memberid, $ownerid);
 		}
 		
     }

@@ -151,8 +151,7 @@ class Schedules Extends Resource
 	/**
 	  This is to delete the schedule
 	**/
-	Protected function pdelete($scheduleid, $body_parms) {
-	    $ownerid = $body_parms['ownerid'];
+	Protected function pdelete($scheduleid, $ownerid) {
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
@@ -366,7 +365,8 @@ class Schedules Extends Resource
 		header('Content-Type: application/json; charset=utf8');
 		$scheduleid = end($request->url_elements);
 		reset($request->url_elements);
-		$this->pdelete($scheduleid, $request->body_parameters);
+		$ownerid = $request->parameters['ownerid'];
+		$this->pdelete($scheduleid, $ownerid);
     }
 
 
