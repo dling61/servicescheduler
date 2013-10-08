@@ -10,8 +10,8 @@ abstract class Resource
      **/
 	
     public function __construct($request) {
-		if (isset($request->parameters['version'])) {
-			$_version = $request->parameters['version'];
+		if (isset($request->parameters['v'])) {
+			$_version = $request->parameters['v'];
 			// handle the existing clients
 			if ($_version == null) 
 				$this->version = 1;
