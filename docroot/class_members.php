@@ -120,7 +120,11 @@ class Members Extends Resource
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		// call a stored procedure to get the members to be returned to caller
-		$data = mysqli_query($dbc, "CALL getMemberByLastUpdate('$ownerid', '$lastupdatetime')") or die("Error is: \n ".mysqli_error($dbc));
+		//$data = mysqli_query($dbc, "CALL getMemberByLastUpdate('$ownerid', '$lastupdatetime')") or die("Error is: \n ".mysqli_error($dbc));
+		$query = " SELECT Member_Id memberid, Member_Email memberemail, Member_Name membername, Mobile_Number mobilenumber, Creator_Id creatorid, ".
+		         " Created_Time createdtime, Is_Deleted isdeleted, Last_Modified lastmodified FROM member ".
+				 " WHERE Creator_Id = '$ownerid' and Last_Modified > '$lastupdatetime' ";
+		$data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
 		$return_arr = array();
 		$memberid_arr = array();
@@ -131,7 +135,7 @@ class Members Extends Resource
 			$j = 0;
 			while($row0 = mysqli_fetch_array($data)){
 			   $isdeleted = $row0['isdeleted'];
-				// if it's deleted, just add it to "dservices"
+				// if it's deleted, just add it to "deletedmembers"
 			   if ($isdeleted == 1) {
 				 $memberid_arr[$j] = $row0['memberid'];
 				 $j++;

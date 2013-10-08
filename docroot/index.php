@@ -46,15 +46,14 @@
 			$_scode =  $request->parameters['scode'];
 			
 			if ($applications[$_device] != $_scode) {
-			    echo "hello";
 				header('Content-Type: application/json; charset=utf8');
-				header('HTTP/1.0 204 Error in security code', true, 204);
+				header('HTTP/1.0 204 Error in security code', true, 206);
 				exit;
 			}
 		}
 		else {
 			header('Content-Type: application/json; charset=utf8');
-			header('HTTP/1.0 204 Error in security code', true, 204);
+			header('HTTP/1.0 204 Error in security code', true, 206);
 			exit;
 		}
 	}

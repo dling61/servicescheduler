@@ -360,6 +360,120 @@ class Services Extends Resource
 		mysqli_close($dbc);	
 	}
 	
+	
+	// This is for get schedules API to get the latest schedules
+	Protected function pgetlastupdate_sh($serviceid, $ownerid, $lastupdatetime) {
+	    
+		$return_arr = array();
+		$delschedule_arr = array();
+		$schedules_arr = array();
+		$members_att = array();
+		
+		// get the list of scheduleid and lastmodified
+		$mysql = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		
+		// call a stored procedure to get the schedules to be returned to caller
+		if ($mysql->multi_query("CALL getScheduleByLastUpdate('$ownerid', '$serviceid', '$lastupdatetime')")) {
+	   
+          $h = 0;
+		  //loop through twp resultsets
+          do {
+            if ($result = $mysql->use_result())
+            {
+			    $i = 0;
+				$j = 0;
+				$k = 0;
+                //Loop the two result sets, reading it into an array
+                while ($row = $result->fetch_array(MYSQLI_ASSOC))
+                {
+                    if ($h == 0) {
+					   // first resultset 
+						$isdeleted = $row['isdeleted'];
+						
+						// if it's deleted, just add it to "deletedschedules"
+						if ($isdeleted == 1) {
+							$delschedule_arr[$j] = $row['scheduleid'];
+							$j++;
+						}
+						else {
+						   $one_arr = array();
+						   $one_arr['scheduleid'] = $row['scheduleid'];
+						   $one_arr['serviceid'] = $row['serviceid'];
+						   $one_arr['desp'] = $row['description'];
+						   $one_arr['creatorid'] = $row['creatorid'];
+						   $one_arr['startdatetime'] = $row['startdatetime'];
+						   $one_arr['enddatetime'] = $row['enddatetime'];
+						   $one_arr['members'] = "";
+						   $one_arr['createdtime'] = $row['createdtime'];
+						   $one_arr['lastmodified'] = $row['lastmodified'];
+						   
+						   $schedules_arr[$i] = $one_arr;
+						   $i++;			   
+						}     
+					}
+					else {
+					   // second resultset 
+						$two_arr = array();
+						$two_arr['scheduleid'] = $row['scheduleid'];
+						$two_arr['memberid'] = $row['memberid'];
+						
+					    $members_att[$k] = $two_arr;
+						$k++;
+					}
+                } // while end
+				
+                // Close the result set
+                $result->close();
+				$h++;
+            }
+          } while ($mysql->more_results() == TRUE && $mysql->next_result());
+        }
+        else
+        {
+            echo '<strong>Error Message ' . $mysql->error . '</strong></p>';
+        }
+		
+	    //$delschedule_str = array();
+		//$delschedule_str = implode(",", $delschedule_arr); // concat to the string seprating by ,
+		
+		foreach ($schedules_arr as &$svalue) {
+			$scheduleid = $svalue['scheduleid'];
+			
+			// get the list of memberid associated with the schedule ID
+			$members_str = '';
+			$i = 0;
+			foreach ($members_att as $mvalue) {
+			  if ($mvalue['scheduleid'] == $scheduleid) {
+				if($i==0)
+				{
+					$members_str.= $mvalue['memberid'];
+				}
+				else
+				{
+					$members_str .=",".$mvalue['memberid'];
+				}
+				$i++;
+			  }
+			}
+			//insert members associated with the schedule into the schedules_arr TBD
+			$svalue['members'] = $members_str;
+		}
+		unset($svalue);
+		
+	    //$return_arr['deletedschedules'] = $delschedule_str;
+		$return_arr['deletedschedules'] = $delschedule_arr;
+		$return_arr['schedules'] = $schedules_arr;
+         
+		$data2 = json_encode($return_arr);
+		echo $data2;
+		
+		// logserver if debug flag is set to 1
+		if (DEBUG_FLAG == 1)
+		    logserver_response($this->lastid,$data2);
+     
+		mysqli_close($mysql);	
+	}
+	
 	// This is for sharedmember API to share a service with a member
 	Protected function insert_sharedmembers($serviceid, $body_param) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
@@ -413,6 +527,9 @@ class Services Extends Resource
 			// handle sharedmembers
 			$serviceid  = $request->url_elements[count($request->url_elements)-2];
 			$this->pgetlastupdate_sm($serviceid, $ownerid, $lastupdatetime);
+		} if ($lastElement == "schedules") {
+			$serviceid  = $request->url_elements[count($request->url_elements)-2];
+			$this->pgetlastupdate_sh($serviceid, $ownerid, $lastupdatetime);
 		}
     }
 
