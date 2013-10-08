@@ -40,10 +40,11 @@
 		$result = $controller->$action_name($request);
     }
 
+	// d --- device; sc -- security code
 	function checkscode($request, $applications) {
-	    if (isset($request->parameters['device']) and isset($request->parameters['scode'])) {
-			$_device = $request->parameters['device'];
-			$_scode =  $request->parameters['scode'];
+	    if (isset($request->parameters['d']) and isset($request->parameters['sc'])) {
+			$_device = $request->parameters['d'];
+			$_scode =  $request->parameters['sc'];
 			
 			if ($applications[$_device] != $_scode) {
 				header('Content-Type: application/json; charset=utf8');
