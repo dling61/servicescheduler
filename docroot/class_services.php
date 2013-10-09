@@ -359,8 +359,8 @@ class Services Extends Resource
 	}
 	
 	
-	// This is for get schedules API to get the latest schedules
-	Protected function pgetlastupdate_sh($serviceid, $ownerid, $lastupdatetime) {
+	// This is for get schedules API to get the latest schedules and members assigned to schedules
+	Protected function pgetlastupdate_sh($serviceid, $lastupdatetime) {
 	    
 		$return_arr = array();
 		$delschedule_arr = array();
@@ -371,7 +371,7 @@ class Services Extends Resource
 		$mysql = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
 		// call a stored procedure to get the schedules to be returned to caller
-		if ($mysql->multi_query("CALL getScheduleByLastUpdate('$ownerid', '$serviceid', '$lastupdatetime')")) {
+		if ($mysql->multi_query("CALL getScheduleByLastUpdate('$serviceid', '$lastupdatetime')")) {
 	   
           $h = 0;
 		  //loop through twp resultsets
@@ -527,7 +527,7 @@ class Services Extends Resource
 			$this->pgetlastupdate_sm($serviceid, $ownerid, $lastupdatetime);
 		} if ($lastElement == "schedules") {
 			$serviceid  = $request->url_elements[count($request->url_elements)-2];
-			$this->pgetlastupdate_sh($serviceid, $ownerid, $lastupdatetime);
+			$this->pgetlastupdate_sh($serviceid, $lastupdatetime);
 		}
     }
 
