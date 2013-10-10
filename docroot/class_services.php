@@ -99,7 +99,7 @@ class Services Extends Resource
 		$sharedrole= $body_parms['sharedrole'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM sharedmember WHERE Service_Id = '$serviceid' and Member_Id = '$memberid' ";
+		$query = "SELECT * FROM sharedmember WHERE Service_Id = '$serviceid' and Member_Id = '$memberid' and Is_Deleted = 0 ";
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
         if (mysqli_num_rows($data)==1) {
@@ -119,6 +119,8 @@ class Services Extends Resource
 		}
 		else {
 			header('HTTP/1.0 202 This shared member doesn\'t exist', true, 202);
+			$data2 = json_encode(array('code'=> 202, 'message' => 'This shared member doesn\'t exist'));
+			echo $data2;
 		}
 		
 		$data->close();
@@ -473,6 +475,7 @@ class Services Extends Resource
 	}
 	
 	// This is for sharedmember API to share a service with a member
+	// [DD] 10/10/2013  --- Reshare a member after it was removed(unshared) before.
 	Protected function insert_sharedmembers($serviceid, $body_param) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 		
@@ -480,30 +483,38 @@ class Services Extends Resource
 		$memberid = $body_param['memberid'];
 		$sharedrole = $body_param['sharedrole'];
 		
-		$query = "SELECT * FROM sharedmember WHERE Service_Id = '$serviceid' and Member_Id = '$memberid'";
+		$query = "SELECT Is_Deleted isdeleted FROM sharedmember WHERE Service_Id = '$serviceid' and Member_Id = '$memberid' LIMIT 1";
 		$data = mysqli_query($dbc, $query) or die(mysqli_error());
-	
-		if (mysqli_num_rows($data)==1) {
+	    $result = mysqli_fetch_assoc($data);
+		if (mysqli_num_rows($data)== 1 and $result['isdeleted'] == 0) {
 			header('HTTP/1.0 201 This shared member exists already', true, 201);
 			$data2 = json_encode(array('code'=> 201, 'message' => 'This shared member exists already'));
 			echo $data2;
 			exit;	
 		}
-		$queryinsert1 = "insert into sharedmember".
-				 " (Service_Id, Member_Id, Shared_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified) ".
-				 "values('$serviceid','$memberid', '$sharedrole',0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP())";
-		$result = mysqli_query($dbc,$queryinsert1);
-		if ($result !== TRUE) {
-			header('HTTP/1.0 203 failed to inert shared members', true, 203);
-			$data2 = json_encode(array('code'=> 203, 'message' => 'failed to inert shared members'));
-			echo $data2;
-			exit;							
+		else {
+		    if (mysqli_num_rows($data)== 0) {
+				$queryinsert1 = "insert into sharedmember".
+						 " (Service_Id, Member_Id, Shared_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
+						 "values('$serviceid','$memberid', '$sharedrole',0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
+			}
+			else if ($result['isdeleted'] == 1) {
+				$queryinsert1 = "update sharedmember ".
+						 " set Is_Deleted = 0, Shared_Role = '$sharedrole', Last_Modified_Id = '$ownerid', Last_Modified = UTC_TIMESTAMP ".
+						 " where Service_Id = '$serviceid' and Member_Id = '$memberid' ";
+			}
+			$result = mysqli_query($dbc,$queryinsert1);
+			if ($result !== TRUE) {
+				header('HTTP/1.0 203 failed to inert shared members', true, 203);
+				$data2 = json_encode(array('code'=> 203, 'message' => 'failed to inert shared members'));
+				echo $data2;
+				exit;							
+			}
+			
+			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+			echo $data2;			
 		}
 		mysqli_free_result($data);
-		
-		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
-        echo $data2;			
-		
 		mysqli_close($dbc);
 	}
 	
@@ -536,7 +547,7 @@ class Services Extends Resource
 	//   2. POST http://servicescheduler.net/services/1234/sharedmembers
     public function post($request) {
 		$parameters1 = array();
-
+        
 		header('Content-Type: application/json; charset=utf8');
 		// handle different resources
 		$lastElement = end($request->url_elements);
