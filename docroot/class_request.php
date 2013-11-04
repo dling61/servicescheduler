@@ -39,8 +39,10 @@ class Request {
 	
 		//log into the log table
 		// TBD: for production it's 1; for testing it's 2
-		if (DEBUG_FLAG == 1)
-		    logserver($this->url_elements[2], $this->action, $body);
+		if (DEBUG_FLAG == 1) {
+				$url_string = implode("/", $this->url_elements);
+				logserver($url_string, $this->action, $body);
+		}
 			
         $content_type = false;
         if(isset($_SERVER['CONTENT_TYPE'])) {
