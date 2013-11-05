@@ -4,6 +4,7 @@ abstract class Resource
     protected static $httpMethods = array("GET", "POST", "HEAD","PUT", "OPTIONS", "DELETE", "TRACE", "CONNECT");
 
 	protected $version;
+	protected $lastid;
 	/**
 	public function __construct() {
     }
@@ -20,6 +21,9 @@ abstract class Resource
 		}
 		else
 			$this->version = 1;
+		
+		// set up the lastid for the last ID for the table serverlog
+		$this->lastid = $request->lastid;
     }
     /**
     protected function allowedHttpMethods() {
