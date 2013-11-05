@@ -8,6 +8,7 @@ class Request {
     public $action;
     public $parameters;
 	public $body_parameters;
+	public $lastid;
 
     public function __construct() {
         $this->action = $_SERVER['REQUEST_METHOD'];
@@ -41,7 +42,7 @@ class Request {
 		// TBD: for production it's 1; for testing it's 2
 		if (DEBUG_FLAG == 1) {
 				$url_string = implode("/", $this->url_elements);
-				logserver($url_string, $this->action, $body);
+				$this->lastid = logserver($url_string, $this->action, $body);
 		}
 			
         $content_type = false;
