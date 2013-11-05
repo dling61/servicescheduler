@@ -12,7 +12,7 @@ class Services Extends Resource
         parent::__construct($request);
 	}	
 	
-	protected $lastid;
+	//protected $lastid;
 	// create a new service
 	Protected function insert($ownerid, $service_parms) {
 	
