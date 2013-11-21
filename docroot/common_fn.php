@@ -9,6 +9,7 @@ function send_mail_godaddy($to, $subject, $body)
 	$headers.= "Reply-To:noreply@cschedule.org\r\n";
 	$headers.= "Return-Path:noreply@cschedule.org\r\n";
 	$headers.= "Content-Type: text/html; charset=ISO-8859-1\r\n";
+	$headers.= "CC: info@cschedule.org";
 	mail($to,$subject,$body,$headers);
 }
 
