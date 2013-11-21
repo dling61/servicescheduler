@@ -33,7 +33,7 @@ class Feedback Extends Resource
 		    $row = mysqli_fetch_array($data);
 			$email = $row['Email'];
 			
-			$subject = $subject.'$email';
+			$subject = $subject.$email;
 			$to = FEEDBACK_EMAIL;
 			
 			send_mail_godaddy($to, $subject, $feedback);
