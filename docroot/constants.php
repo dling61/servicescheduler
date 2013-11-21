@@ -8,4 +8,5 @@
 	define('PUSH_MODE', 'development');
 	define('LOG_LOCATION', 'log');
 	define('REST_SERVER', 'appitest2.servicescheduler.net');
+	define('FEEDBACK_EMAIL', 'ding.dongling@gmail.com');
 ?>

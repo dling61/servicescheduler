@@ -34,24 +34,19 @@ class Feedback Extends Resource
 			$email = $row['Email'];
 			
 			$subject = $subject.'$email';
-			$to = "ding.dongling@gmail.com";
+			$to = FEEDBACK_EMAIL;
 			
-			send_mail_godaddy($to, $subject, $feedback)
+			send_mail_godaddy($to, $subject, $feedback);
 	    }
 	
+		$data->close();
+		mysqli_close($dbc);
 	
     }
 	
     // This is the API to send the feedback to the server
 	// POST http://servicescheduler.net/feedback
     public function post($request) {
-		$parameters1 = array();
-      
-		if ($request->body_parameters ['members']) {
-			foreach($request->body_parameters['members'] as $param_name => $param_value) {
-					$parameters1[$param_name] = $param_value;
-			}
-		}
 		header('Content-Type: application/json; charset=utf8');
 		$this->sendFeedback($request->body_parameters['ownerid'], $request->body_parameters['feedback']);  
     }

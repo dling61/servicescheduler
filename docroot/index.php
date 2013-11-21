@@ -5,6 +5,7 @@
 	require_once('class_services.php');
 	require_once('class_schedules.php');
 	require_once('class_request.php');
+	require_once('class_feedback.php');
 	
 	// 08/16/2013: Moved this to GitHub for source code version control
 	
