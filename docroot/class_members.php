@@ -123,7 +123,8 @@ class Members Extends Resource
 		//$data = mysqli_query($dbc, "CALL getMemberByLastUpdate('$ownerid', '$lastupdatetime')") or die("Error is: \n ".mysqli_error($dbc));
 		$query = " SELECT Member_Id memberid, Member_Email memberemail, Member_Name membername, Mobile_Number mobilenumber, Creator_Id creatorid, ".
 		         " Created_Time createdtime, Is_Deleted isdeleted, Last_Modified lastmodified FROM member ".
-				 " WHERE Creator_Id = '$ownerid' and Last_Modified > '$lastupdatetime' ";
+				 " WHERE Creator_Id = '$ownerid' and Last_Modified > '$lastupdatetime' ".
+				 " and Member_Id != 'ownerid'*10000";
 		$data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
 		$return_arr = array();
