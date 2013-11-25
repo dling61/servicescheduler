@@ -13,6 +13,51 @@ class Services Extends Resource
 	}	
 	
 	//protected $lastid;
+	
+	// Insert a member if it doesn't exist and then a shared member with the creator role
+	Protected function insert_creator($ownerid, $serviceid) {
+	
+	   $dbc1 = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+       $query1 = "SELECT Email, User_Name, Mobile FROM user WHERE User_Id = $ownerid";
+	   
+	   $data1 = mysqli_query($dbc1, $query1);
+		
+		if (mysqli_num_rows($data1)==1) {
+			$row1 = mysqli_fetch_array($data1);
+			
+			$email = $row1['Email'];
+			$membername = $row1['User_Name'];
+			$mobile = $row1['Mobile'];
+			
+			$memberid = $ownerid*10000;
+			
+			// Insert this service if no exists
+			$queryinsert = "insert ignore into member(Member_Id,Member_Email,Member_Name,Mobile_Number,Is_Registered,Creator_Id, Created_Time, Last_Modified)
+			                 values('$memberid','$email','$membername','$mobile',0, '$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP())";
+
+			$result = mysqli_query($dbc1,$queryinsert) or die("Error is: \n ".mysqli_error($dbc));
+			if ($result !== TRUE) {
+				// if error, roll back transaction
+				header('HTTP/1.0 202 Can not add the creator member', true, 202);
+				Exit;
+			}
+			
+			$queryinsert1 = "insert into sharedmember".
+						 " (Service_Id, Member_Id, Shared_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
+						 "values('$serviceid','$memberid', 0,0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
+			$result1 = mysqli_query($dbc1,$queryinsert1) or die("Error is: \n ".mysqli_error($dbc));
+			if ($result1 !== TRUE) {
+				// if error, roll back transaction
+				header('HTTP/1.0 202 Can not add the creator member', true, 202);
+				Exit;
+			}
+		}
+		$data1->close();
+		mysqli_close($dbc1);
+	
+	}
+	
+	
 	// create a new service
 	Protected function insert($ownerid, $service_parms) {
 	
@@ -46,6 +91,9 @@ class Services Extends Resource
 				header('HTTP/1.0 202 This service can\' be added', true, 202);
 				Exit;
 			}
+			
+			// insert a shared member and member if it doesn't exist
+			$this->insert_creator($ownerid, $serviceid);
 			
 			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
 		    //echo json_encode($data2);
