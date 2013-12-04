@@ -44,8 +44,8 @@ class Schedules Extends Resource
 			mysqli_autocommit($dbc, FALSE);
 			// Insert this schedule if no exists
 			$queryinsert = "INSERT INTO schedule ".
-								"(Schedule_Id,Service_Id,Start_DateTime,End_DateTime, Description,Creator_Id,Is_Deleted,Created_Time,Last_Modified)".
-								" values('$scheduleid','$serviceid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP())";
+								"(Schedule_Id,Service_Id,Start_DateTime,End_DateTime, Description,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+								" values('$scheduleid','$serviceid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(),'$ownerid')";
 			
 			$result = mysqli_query($dbc,$queryinsert) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
@@ -57,8 +57,8 @@ class Schedules Extends Resource
 				for ($i=0; $i<count($parameters2); $i++) {
 					$memberid = $parameters2[$i];
 					$queryinsert1 = "insert into onduty".
-						     "(Service_Id, Schedule_Id,Member_Id,Created_Time, Last_Modified) ".
-							 "values('$serviceid','$scheduleid','$memberid', UTC_TIMESTAMP(), UTC_TIMESTAMP())";
+						     "(Service_Id, Schedule_Id,Member_Id,Creator_Id, Created_Time, Last_Modified, Last_Modified_Id) ".
+							 "values('$serviceid','$scheduleid','$memberid','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
 					$result = mysqli_query($dbc,$queryinsert1);
 					if ($result !== TRUE) {
 						mysqli_rollback($dbc);
@@ -77,6 +77,7 @@ class Schedules Extends Resource
 	}
 	
 	// this is to update schedule and member assigment 
+	// 12/04/2013  dding  --- don't update the last_modified_id due to the lack of this information
 	Protected function update($serviceid, $scheduleid, $schedule_parms) {
 		$parameters2 = array();													
 		
