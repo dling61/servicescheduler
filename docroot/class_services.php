@@ -82,8 +82,8 @@ class Services Extends Resource
 		else {
 			// Insert this service if no exists
 			$queryinsert = "INSERT INTO service ".
-								"(Service_Id,Service_Name,Description,SRepeat,Start_Datetime,End_Datetime,UTC_Off,Alert,Creator_Id,Is_Deleted,Created_Time,Last_Modified)".
-								" values('$serviceid','$servicename','$description','$srepeat',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$utcoff','$alert','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP())";
+								"(Service_Id,Service_Name,Description,SRepeat,Start_Datetime,End_Datetime,UTC_Off,Alert,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+								" values('$serviceid','$servicename','$description','$srepeat',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$utcoff','$alert','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";
 			
 			$result = mysqli_query($dbc,$queryinsert) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
@@ -120,7 +120,7 @@ class Services Extends Resource
         if (mysqli_num_rows($data)==1) {
 		    // Service exists and go ahead to update it
 			$queryupdate = "update service set ".
-						"Service_Name = '$servicename', Description = '$description', SRepeat = '$repeat', Start_Datetime = UNIX_TIMESTAMP('$startdatetime'), End_Datetime = UNIX_TIMESTAMP('$enddatetime'), Last_Modified = UTC_TIMESTAMP() ".
+						"Service_Name = '$servicename', Description = '$description', SRepeat = '$repeat', Start_Datetime = UNIX_TIMESTAMP('$startdatetime'), End_Datetime = UNIX_TIMESTAMP('$enddatetime'), Last_Modified = UTC_TIMESTAMP(),Last_Modified_Id = '$ownerid' ".
 						" , Alert = '$alert' where Service_Id = '$serviceid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
