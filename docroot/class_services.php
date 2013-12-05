@@ -277,9 +277,7 @@ class Services Extends Resource
 	
 	Protected function pgetlastupdate($ownerid, $lastupdatetime) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
-		// call a stored procedure to get the services to be returned to caller
-		//$data = mysqli_query($dbc, "CALL getServiceByLastUpdate('$ownerid', '$lastupdatetime')") or die("Error is: \n ".mysqli_error($dbc));
-		
+		/**
 		$query = "(SELECT Service_Id serviceid,Service_Name servicename,Description descp, ".
 				 " SRepeat srepeat,FROM_UNIXTIME(Start_Datetime) startdatetime,FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert, Creator_Id creatorid,Is_Deleted isdeleted,".
                  " Created_Time createdtime,Last_Modified lastmodified, 0 as sharedrole ".
@@ -293,7 +291,16 @@ class Services Extends Resource
                  " and o.Member_Id = m.Member_Id ".
                  " and m.Member_Email = (select Email from user where User_Id = '$ownerid') ". 
                  " and ((o.Last_Modified > '$lastupdatetime') or (s.Last_Modified > '$lastupdatetime')))";
-
+		**/
+        $query = " SELECT distinct s.Service_Id serviceid ,s.Service_Name servicename,s.Description descp, ".
+                 " s.SRepeat srepeat,FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime,s.Alert alert,s.Creator_Id creatorid, ".
+                 " o.Is_Deleted isdeleted,s.Created_Time createdtime,s.Last_Modified lastmodified,o.Shared_Role sharedrole ".
+                 " from service s, sharedmember o, member m ".
+                 " where s.Service_Id = o.Service_Id ".
+                 " and o.Member_Id = m.Member_Id ".
+                 " and m.Member_Email = (select Email from user where User_Id = '$ownerid') ". 
+                 " and ((o.Last_Modified > '$lastupdatetime') or (s.Last_Modified > '$lastupdatetime'))";
+		
 		$data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
 		$return_arr = array();
