@@ -207,13 +207,13 @@ class Creator Extends Resource
 	// A user can type in a password twice from App or web site to reset the password
 	// This is to reset the password entered from a user
 	// parameters are passed in instead of body_params
-	Protected function setpassword($parms) {
+	Protected function setpassword($body_parms) {
 	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 		 
-		$email = $parms['email'];
-		$token = $parms['token'];
-		$password = $parms['password'];
+		$email = $body_parms['email'];
+		$token = $body_parms['token'];
+		$password = $body_parms['password'];
 		 
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 	  
@@ -328,7 +328,7 @@ class Creator Extends Resource
 		    $this->settoken($request->body_parameters);
 		} 
 		else if ($request->parameters['action'] == 'setpassword') {
-		    $this->setpassword($request->parameters);
+		    $this->setpassword($request->body_parameters);
 		} 
     }
 
