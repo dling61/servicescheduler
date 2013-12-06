@@ -131,7 +131,7 @@ class Creator Extends Resource
 			
 			if (mysqli_num_rows($data) == 1) {
 			
-				$resetupdate = "update resetpassword set Token = '$token', Last_Modified = NOW() where Email = '$email'";
+				$resetupdate = "update resetpassword set Token = '$token', Last_Modified = NOW(), Is_Done = 0, Expired_Time = (UNIX_TIMESTAMP(UTC_TIMESTAMP()) + 720) where Email = '$email'";
 				$result = mysqli_query($dbc,$resetupdate) or die("Error is: \n ".mysqli_error($dbc));
 				if ($result !== TRUE) {
 					// if error, roll back transaction
@@ -217,7 +217,7 @@ class Creator Extends Resource
 		 
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 	  
-        $query = "SELECT token FROM resetpassword WHERE Email = '$email' and Token = '$token' and Is_Done = 0";
+        $query = "SELECT Expired_Time FROM resetpassword WHERE Email = '$email' and Token = '$token' and Is_Done = 0";
 					
 		$data = mysqli_query($dbc, $query);
 		
@@ -225,6 +225,8 @@ class Creator Extends Resource
 			logserveronce("Setpassword","POST", 'Email: '.$email.' '.'Token: '.$token, "");
 		
         if (mysqli_num_rows($data) == 1) {
+			// TDB -- check if the time is more than 2 hours
+			
 			//update the password
 			$updatepw = "update user set Password = SHA('$password'),Last_Modified = NOW() WHERE Email = '$email'"; 
 						
