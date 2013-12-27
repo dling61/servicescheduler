@@ -294,7 +294,7 @@ class Services Extends Resource
 		**/
         $query = " SELECT distinct s.Service_Id serviceid ,s.Service_Name servicename,s.Description descp, ".
                  " s.SRepeat srepeat,FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime,s.Alert alert,s.Creator_Id creatorid, ".
-                 " o.Is_Deleted isdeleted,s.Created_Time createdtime,s.Last_Modified lastmodified,o.Shared_Role sharedrole ".
+                 " s.Is_Deleted isdeleted,s.Created_Time createdtime,s.Last_Modified lastmodified,o.Shared_Role sharedrole ".
                  " from service s, sharedmember o, member m ".
                  " where s.Service_Id = o.Service_Id ".
                  " and o.Member_Id = m.Member_Id ".
