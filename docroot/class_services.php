@@ -293,7 +293,7 @@ class Services Extends Resource
                  " and ((o.Last_Modified > '$lastupdatetime') or (s.Last_Modified > '$lastupdatetime')))";
 		**/
         $query = " SELECT distinct s.Service_Id serviceid ,s.Service_Name servicename,s.Description descp, ".
-                 " s.SRepeat srepeat,FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime,s.Alert alert,s.Creator_Id creatorid, ".
+                 " s.SRepeat srepeat,FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime,s.UTC_Off utcoff,s.Alert alert,s.Creator_Id creatorid, ".
                  " s.Is_Deleted isdeleted,s.Created_Time createdtime,s.Last_Modified lastmodified,o.Shared_Role sharedrole ".
                  " from service s, sharedmember o, member m ".
                  " where s.Service_Id = o.Service_Id ".
@@ -329,6 +329,7 @@ class Services Extends Resource
 				   //$one_arr['todate'] = $row0['todate'];
 				   $one_arr['startdatetime'] = $row0['startdatetime'];
 				   $one_arr['enddatetime'] = $row0['enddatetime'];
+				   $one_arr['utcoff'] = $row0['utcoff'];
 				   $one_arr['alert'] = $row0['alert'];
 				   $one_arr['creatorid'] = $row0['creatorid'];
 				   $one_arr['createdtime'] = $row0['createdtime'];
