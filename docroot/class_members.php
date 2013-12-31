@@ -30,8 +30,8 @@ class Members Extends Resource
 	    }
 		else {
 			// Insert this member if no exists
-			$queryinsert = "insert into member(Member_Id,Member_Email,Member_Name,Mobile_Number,Is_Registered,Creator_Id, Created_Time, Last_Modified)
-			                 values('$memberid','$email','$membername','$mobile',0, '$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP())"; 
+			$queryinsert = "insert into member(Member_Id,Member_Email,Member_Name,Mobile_Number,Is_Registered,Creator_Id, Created_Time, Is_Deleted, Last_Modified, Last_Modified_Id)
+			                 values('$memberid','$email','$membername','$mobile',0, '$ownerid', UTC_TIMESTAMP(),0,UTC_TIMESTAMP(),'$ownerid')"; 
 			$result = mysqli_query($dbc,$queryinsert); 
 			if ($result != TRUE) {
 				// throw the error 201 and return to client
@@ -61,7 +61,7 @@ class Members Extends Resource
 		
 			$timestamp = date('Y-m-d H:i:s');
 			$queryupdate = "update member set ".
-						"Member_Name = '$membername', Member_Email = '$email', Mobile_Number = '$mobile', Last_Modified = UTC_TIMESTAMP() ".
+						"Member_Name = '$membername', Member_Email = '$email', Mobile_Number = '$mobile', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 						" where Member_Id = '$memberid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
