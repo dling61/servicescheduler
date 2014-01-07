@@ -63,9 +63,17 @@ class Request {
                 parse_str($body, $postvars);
                 foreach($postvars as $field => $value) {
                     $body_parameters[$field] = $value;
-
                 }
                 $this->format = "html";
+                break;
+			case "application/json, application/json":
+                $body_params = json_decode($body);
+                if($body_params) {
+                    foreach($body_params as $param_name => $param_value) {
+                        $body_parameters[$param_name] = $param_value;
+                    }
+                }
+                $this->format = "json";
                 break;
             default:
                 // we could parse other supported formats here
