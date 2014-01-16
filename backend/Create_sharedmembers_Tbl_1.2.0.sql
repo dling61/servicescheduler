@@ -14,4 +14,4 @@ CREATE TABLE IF NOT EXISTS `sharedmember` (
   `Created_Time` datetime NOT NULL,
   `Last_Modified` datetime NOT NULL,
   `Last_Modified_Id` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=MyISAM DEFAULT CHARSET=latin1;
