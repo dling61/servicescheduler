@@ -100,12 +100,12 @@
 			<body bgcolor="" topmargin="25">
 			Hi ' . $member_name . ',<br>
 			<br>
-			Your service '. $service_name . ' is scheduled to occur at ' . $start_datetime . ' .<br>
+			Your activity '. $service_name . ' is scheduled to occur at ' . $start_datetime . ' .<br>
 			<br>
-			If you have any questions, please contact your service organizer ' . $user_name . ' at ' . $user_email . ' or phone ' . $user_mobile . ' .<br>
+			If you have any questions, please contact your activity organizer ' . $user_name . ' at ' . $user_email . ' or phone ' . $user_mobile . ' .<br>
             <br>
 			<br>
-			To view all schedules for this service or create your own service schedules, please download CSchedule from the Apple App Store.<br>
+			To view all schedules for this activity or create your own activity schedules, please go to http://www.cschedule.com.<br>
 			<br>
 			<br>
 			Thank You,
@@ -114,7 +114,7 @@
 			CSchedule Team<br>
 			</body></html>';
 			
-			$mail_Subject = "Your scheduled service $service_name is coming up";					
+			$mail_Subject = "Your scheduled activity $service_name is coming up";					
 			// mail to customer to inform the payment status
 			send_mail_godaddy($mail_To, $mail_Subject, $mail_Body);
 			writeToLog("Sent Email to $member_email");     
