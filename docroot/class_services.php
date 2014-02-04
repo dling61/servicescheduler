@@ -574,10 +574,10 @@ class Services Extends Resource
 		mysqli_close($dbc);
 	}
 	
-	// GET method here is to handle 2 cases
-	//  1. http://servicescheduler.net/services?ownerid=12143&lastupdatetime=121333000
-	//  2. http://servicescheduler.net/services/1234/sharedmembers?ownerid=12434&lastupdatetime=121443232
-	// 
+	// GET method here is to handle 3 cases
+	//  1. http://[REST_SERVER]/services?ownerid=12143&lastupdatetime=121333000
+	//  2. http://[REST_SERVER]/services/1234/sharedmembers?ownerid=12434&lastupdatetime=121443232
+	//  3. http://[REST_SERVER]/services/1234/schedules?ownerid=11122@lastupdatetime=12121
 	public function get($request) {
         $ownerid = $request->parameters['ownerid'];
 		$lastupdatetime = urldecode($request->parameters['lastupdatetime']);
