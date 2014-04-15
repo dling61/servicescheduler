@@ -2,6 +2,12 @@
 
 require_once('constants.php');
 
+function isEmptyString($data)
+{
+        return (trim($data) == "" or $data == null);
+}
+
+
 function send_mail_godaddy($to, $subject, $body)
 // send an email to some one from godaddy
 {
