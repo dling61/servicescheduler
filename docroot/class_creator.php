@@ -28,33 +28,43 @@ class Creator Extends Resource
 		
 		$querysearch = "select User_Id from user where Email='$email'";
 		$data = mysqli_query($dbc,$querysearch);
-			
-		//register a user
-		if(mysqli_num_rows($data)==0){
 		
-			$queryinsert = "insert into user(Email,User_Name,Password,User_Type, Mobile,Verified, Created_Time, Last_Modified)
-			                 values('$email','$username',SHA('$password'),'','$mobile',0, UTC_TIMESTAMP(), UTC_TIMESTAMP())"; 
+		if(!isEmptyString($email) and !isEmptyString($username) and !isEmptyString($password)) {
+			//register a user
+			if(mysqli_num_rows($data)==0){
 			
-			mysqli_query($dbc,$queryinsert)or die("Error is: \n ".mysqli_error($dbc));		
-		    
-			$data2 = mysqli_query($dbc,$querysearch);			
-			$row = mysqli_fetch_array($data2);
-			$userid = $row['User_Id'];
-			
-			// Success
-			$data3 = json_encode(array('ownerid'=> $userid));
-			echo $data3;
-			
-			// logserver if debug flag is set to 1
-				if (DEBUG_FLAG == 1)
-					logserveronce("Register","POST", $email, $data3);
-			$data2->close();
+				$queryinsert = "insert into user(Email,User_Name,Password,User_Type, Mobile,Verified, Created_Time, Last_Modified)
+								 values('$email','$username',SHA('$password'),'','$mobile',0, UTC_TIMESTAMP(), UTC_TIMESTAMP())"; 
+				
+				mysqli_query($dbc,$queryinsert)or die("Error is: \n ".mysqli_error($dbc));		
+				
+				$data2 = mysqli_query($dbc,$querysearch);			
+				$row = mysqli_fetch_array($data2);
+				$userid = $row['User_Id'];
+				
+				// Success
+				$data3 = json_encode(array('ownerid'=> $userid));
+				echo $data3;
+				
+				// logserver if debug flag is set to 1
+					if (DEBUG_FLAG == 1)
+						logserveronce("Register","POST", $email, $data3);
+				$data2->close();
+			}
+			else {
+				// there is already registered
+				header('X-PHP-Response-Code: 201', true, 201);
+				echo json_encode(array('error message'=>'This user is already existing'));
+			}
 		}
 		else {
-			// there is already registered
-			header('HTTP/1.0 201 The user already exists', true, 201);
-		
+			// empty or null for one of user name, password and email
+			//header('HTTP/1.0 202 User name, password and email might be empty',true, 202);
+			header('X-PHP-Response-Code: 202', true, 202);
+			//http_response_code(202);
+			echo json_encode(array('error message'=>'empty or null value for one of user name, password and or email'));
 		}
+		
 		$data->close();
 		mysqli_close($dbc);
 	}
