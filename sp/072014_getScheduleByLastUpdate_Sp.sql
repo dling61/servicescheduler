@@ -11,7 +11,7 @@
   
 
   -- Member list
-  SELECT s.Schedule_Id scheduleid, o.Member_Id memberid
+  SELECT s.Schedule_Id scheduleid, o.Member_Id memberid, o.Confirm confirm
       FROM schedule s, onduty o
       WHERE s.Service_Id = serviceid and s.Schedule_Id = o.Schedule_Id and s.Is_Deleted = 0;
  

@@ -66,11 +66,11 @@ class Services Extends Resource
 		$serviceid = $service_parms['serviceid'];
 		$servicename = $service_parms['servicename'];
 		$description = $service_parms['desp'];
-		$srepeat = $service_parms['repeat'];
-		$startdatetime = $service_parms['startdatetime'];
-		$enddatetime = $service_parms['enddatetime'];
-		$utcoff = $service_parms['utcoff'];
-		$alert = $service_parms['alert'];
+		//$srepeat = $service_parms['repeat'];
+		//$startdatetime = $service_parms['startdatetime'];
+		///$enddatetime = $service_parms['enddatetime'];
+		//$utcoff = $service_parms['utcoff'];
+		//$alert = $service_parms['alert'];
 	  
 		$query = "SELECT Service_Id FROM service WHERE Service_Id = $serviceid";
         $data = mysqli_query($dbc, $query);
@@ -82,8 +82,8 @@ class Services Extends Resource
 		else {
 			// Insert this service if no exists
 			$queryinsert = "INSERT INTO service ".
-								"(Service_Id,Service_Name,Description,SRepeat,Start_Datetime,End_Datetime,UTC_Off,Alert,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
-								" values('$serviceid','$servicename','$description','$srepeat',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$utcoff','$alert','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";
+								"(Service_Id,Service_Name,Description,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+								" values('$serviceid','$servicename','$description','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";
 			
 			$result = mysqli_query($dbc,$queryinsert) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
@@ -106,12 +106,12 @@ class Services Extends Resource
 	Protected function update($serviceid, $ownerid, $service_parms) {
 		$servicename = $service_parms['servicename'];
 		$description= $service_parms['desp'];
-		$repeat = $service_parms['repeat'];
-		$startdatetime = $service_parms['startdatetime'];
-		$enddatetime = $service_parms['enddatetime'];
+		//$repeat = $service_parms['repeat'];
+		//$startdatetime = $service_parms['startdatetime'];
+		//$enddatetime = $service_parms['enddatetime'];
 		// Don't need to update it
 		//$utcoff = $service_parms['utcoff'];
-		$alert = $service_parms['alert'];
+		//$alert = $service_parms['alert'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		$query = "SELECT * FROM service WHERE Service_Id = '$serviceid'";
@@ -120,8 +120,8 @@ class Services Extends Resource
         if (mysqli_num_rows($data)==1) {
 		    // Service exists and go ahead to update it
 			$queryupdate = "update service set ".
-						"Service_Name = '$servicename', Description = '$description', SRepeat = '$repeat', Start_Datetime = UNIX_TIMESTAMP('$startdatetime'), End_Datetime = UNIX_TIMESTAMP('$enddatetime'), Last_Modified = UTC_TIMESTAMP(),Last_Modified_Id = '$ownerid' ".
-						" , Alert = '$alert' where Service_Id = '$serviceid'";
+						"Service_Name = '$servicename', Description = '$description', Last_Modified = UTC_TIMESTAMP(),Last_Modified_Id = '$ownerid' ".
+						"where Service_Id = '$serviceid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
@@ -180,7 +180,8 @@ class Services Extends Resource
 	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
-		$query = "SELECT * FROM service WHERE Service_Id = '$serviceid' and Is_Deleted = 0";
+		// only owner can delete a service
+		$query = "SELECT * FROM service WHERE Service_Id = '$serviceid' and Creator_id = '$ownerid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data)==0) {
@@ -220,25 +221,21 @@ class Services Extends Resource
 						header('HTTP/1.0 203 Failed to delete schedule', true, 203);
 						exit;
 					}
-					else {   
-						// update the existing relationship
-						//$querydelete = "update onduty set ".
-						//	" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-						//	" where Service_Id = '$serviceid'";
-						
-						$querydelete = "update sharedmember set ".
-							" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-							" where Service_Id = '$serviceid'";
-						$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
-						if ($result !== TRUE) {
-							// if error, roll back transaction
-							mysqli_rollback($dbc);
-							header('HTTP/1.0 204 Failed to delete sharedrole in sharedmember', true, 204);
-							exit;
-						}
-						mysqli_commit($dbc);
-					}
-				}					
+				}
+				
+				// always delete sharedmembers since at least the creator is on the sharedmember table   
+				$querydelete = "update sharedmember set ".
+					" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+					" where Service_Id = '$serviceid'";
+				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
+				if ($result !== TRUE) {
+					// if error, roll back transaction
+					mysqli_rollback($dbc);
+					header('HTTP/1.0 204 Failed to delete sharedrole in sharedmember', true, 204);
+					exit;
+				}
+				mysqli_commit($dbc);
+										
 			}	
 		}
 		
@@ -277,23 +274,9 @@ class Services Extends Resource
 	
 	Protected function pgetlastupdate($ownerid, $lastupdatetime) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
-		/**
-		$query = "(SELECT Service_Id serviceid,Service_Name servicename,Description descp, ".
-				 " SRepeat srepeat,FROM_UNIXTIME(Start_Datetime) startdatetime,FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert, Creator_Id creatorid,Is_Deleted isdeleted,".
-                 " Created_Time createdtime,Last_Modified lastmodified, 0 as sharedrole ".
-				 " FROM service where creator_id = '$ownerid' and Last_Modified > '$lastupdatetime') ".
-                 " UNION ".
-                 " (SELECT distinct s.Service_Id serviceid ,s.Service_Name servicename,s.Description descp, ".
-                 " s.SRepeat srepeat,FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime,s.Alert alert,s.Creator_Id creatorid, ".
-                 " o.Is_Deleted isdeleted,s.Created_Time createdtime,s.Last_Modified lastmodified,o.Shared_Role sharedrole ".
-                 " from service s, sharedmember o, member m ".
-                 " where s.Service_Id = o.Service_Id ".
-                 " and o.Member_Id = m.Member_Id ".
-                 " and m.Member_Email = (select Email from user where User_Id = '$ownerid') ". 
-                 " and ((o.Last_Modified > '$lastupdatetime') or (s.Last_Modified > '$lastupdatetime')))";
-		**/
-        $query = " SELECT distinct s.Service_Id serviceid ,s.Service_Name servicename,s.Description descp, ".
-                 " s.SRepeat srepeat,FROM_UNIXTIME(Start_Datetime) startdatetime, FROM_UNIXTIME(End_Datetime) enddatetime,s.UTC_Off utcoff,s.Alert alert,s.Creator_Id creatorid, ".
+	
+        $query = " SELECT distinct s.Service_Id serviceid ,s.Service_Name servicename,s.Description descp ".
+                 " ,s.Creator_Id creatorid, ".
                  " if (s.Is_Deleted = 1 or o.Is_Deleted = 1, 1, 0) isdeleted,s.Created_Time createdtime,s.Last_Modified lastmodified,o.Shared_Role sharedrole ".
                  " from service s, sharedmember o, member m ".
                  " where s.Service_Id = o.Service_Id ".
@@ -322,15 +305,15 @@ class Services Extends Resource
 				   $one_arr['serviceid'] = $row0['serviceid'];
 				   $one_arr['servicename'] = $row0['servicename'];
 				   $one_arr['desp'] = $row0['descp'];
-				   $one_arr['repeat'] = $row0['srepeat'];
+				   //$one_arr['repeat'] = $row0['srepeat'];
 				   //$one_arr['starttime'] = $row0['starttime'];
 				   //$one_arr['endtime'] = $row0['endtime'];
 				   //$one_arr['fromdate'] = $row0['fromdate'];
 				   //$one_arr['todate'] = $row0['todate'];
-				   $one_arr['startdatetime'] = $row0['startdatetime'];
-				   $one_arr['enddatetime'] = $row0['enddatetime'];
-				   $one_arr['utcoff'] = $row0['utcoff'];
-				   $one_arr['alert'] = $row0['alert'];
+				   //$one_arr['startdatetime'] = $row0['startdatetime'];
+				   //$one_arr['enddatetime'] = $row0['enddatetime'];
+				   //$one_arr['utcoff'] = $row0['utcoff'];
+				   //$one_arr['alert'] = $row0['alert'];
 				   $one_arr['creatorid'] = $row0['creatorid'];
 				   $one_arr['createdtime'] = $row0['createdtime'];
 				   $one_arr['lastmodified'] = $row0['lastmodified'];
@@ -416,8 +399,8 @@ class Services Extends Resource
 		mysqli_close($dbc);	
 	}
 	
-	
 	// This is for get schedules API to get the latest schedules and members assigned to schedules
+	// 07/2014 to add confirm in the member of a schedule
 	Protected function pgetlastupdate_sh($serviceid, $lastupdatetime) {
 	    
 		$return_arr = array();
@@ -432,7 +415,7 @@ class Services Extends Resource
 		if ($mysql->multi_query("CALL getScheduleByLastUpdate('$serviceid', '$lastupdatetime')")) {
 	   
           $h = 0;
-		  //loop through twp resultsets
+		  //loop through two resultsets
           do {
             if ($result = $mysql->use_result())
             {
@@ -459,6 +442,8 @@ class Services Extends Resource
 						   $one_arr['creatorid'] = $row['creatorid'];
 						   $one_arr['startdatetime'] = $row['startdatetime'];
 						   $one_arr['enddatetime'] = $row['enddatetime'];
+						   $one_arr['alert'] = $row['alert'];
+						   $one_arr['abbrtzname'] = $row['abbrtzname'];
 						   $one_arr['members'] = "";
 						   $one_arr['createdtime'] = $row['createdtime'];
 						   $one_arr['lastmodified'] = $row['lastmodified'];
@@ -472,6 +457,7 @@ class Services Extends Resource
 						$two_arr = array();
 						$two_arr['scheduleid'] = $row['scheduleid'];
 						$two_arr['memberid'] = $row['memberid'];
+						$two_arr['confirm'] = $row['confirm'];
 						
 					    $members_att[$k] = $two_arr;
 						$k++;
@@ -495,19 +481,18 @@ class Services Extends Resource
 		foreach ($schedules_arr as &$svalue) {
 			$scheduleid = $svalue['scheduleid'];
 			
-			// get the list of memberid associated with the schedule ID
-			$members_str = '';
+			// get the list of memberid and confirm associated with the schedule ID
+			//$members_str = '';
+			$members_str = array();
 			$i = 0;
 			foreach ($members_att as $mvalue) {
 			  if ($mvalue['scheduleid'] == $scheduleid) {
-				if($i==0)
-				{
-					$members_str.= $mvalue['memberid'];
-				}
-				else
-				{
-					$members_str .=",".$mvalue['memberid'];
-				}
+				
+				$member_str = array();
+				$member_str['memberid'] = $mvalue['memberid'];
+				$member_str['confirm'] = $mvalue['confirm'];
+			
+				$members_str[$i] = $member_str;
 				$i++;
 			  }
 			}
