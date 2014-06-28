@@ -21,7 +21,7 @@ class Schedules Extends Resource
 		$startdatetime = $schedule_parms['startdatetime'];
 		$enddatetime = $schedule_parms['enddatetime'];
 		$alert = $schedule_parms['alert'];
-		$abbrtzname = $schedule_parms['abbrtzname'];
+		$tzid = $schedule_parms['tzid'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 		
@@ -38,8 +38,8 @@ class Schedules Extends Resource
 			mysqli_autocommit($dbc, FALSE);
 			// Insert this schedule if no exists
 			$queryinsert = "INSERT INTO schedule ".
-								"(Schedule_Id,Service_Id,Start_DateTime,End_DateTime,Description,Alert,Abbr_Tzname,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
-								" values('$scheduleid','$serviceid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$abbrtzname', ".
+								"(Schedule_Id,Service_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+								" values('$scheduleid','$serviceid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', ".
 								" '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(),'$ownerid')";
 			
 			$result = mysqli_query($dbc,$queryinsert) or die("Error is: \n ".mysqli_error($dbc));
@@ -79,7 +79,7 @@ class Schedules Extends Resource
 	
 	// this is to update schedule and member assigment 
 	// 12/04/2013  dding  --- don't update the last_modified_id due to the lack of this information
-	// 06/22/2014  dding  --- add alert/abbr_tzname
+	// 06/22/2014  dding  --- add alert/Tz_Id
 	Protected function update($serviceid, $scheduleid, $ownerid, $schedule_parms) {
 		$members = array();													
 		
@@ -87,7 +87,7 @@ class Schedules Extends Resource
 		$startdatetime = $schedule_parms['startdatetime'];
 		$enddatetime = $schedule_parms['enddatetime'];
 		$alert = $schedule_parms['alert'];
-		$abbrtzname = $schedule_parms['abbrtzname'];
+		$tzid = $schedule_parms['tzid'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$scheduleid'";
@@ -100,7 +100,7 @@ class Schedules Extends Resource
 		
 			$queryupdate = "update schedule set ".
 						"Service_Id = '$serviceid', Description = '$description', Start_DateTime = UNIX_TIMESTAMP('$startdatetime'), ".
-						" End_DateTime = UNIX_TIMESTAMP('$enddatetime'), Alert = '$alert', Abbr_Tzname = '$abbrtzname', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+						" End_DateTime = UNIX_TIMESTAMP('$enddatetime'), Alert = '$alert', Tz_Id = '$tzid', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 						" where Schedule_Id = '$scheduleid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			
