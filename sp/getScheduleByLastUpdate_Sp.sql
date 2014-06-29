@@ -6,7 +6,7 @@
 
   -- Schedule list
   SELECT Schedule_Id scheduleid, Service_Id serviceid, Creator_Id creatorid,Description description, FROM_UNIXTIME(Start_Datetime) startdatetime,
-          FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert, Abbr_Tzname abbrtzname, Is_Deleted isdeleted, 0, Created_Time createdtime, Last_Modified lastmodified
+          FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert, Tz_Id tzid, Is_Deleted isdeleted, 0, Created_Time createdtime, Last_Modified lastmodified
       FROM schedule where Service_Id = serviceid and Last_Modified > p_lastupdate;
   
 

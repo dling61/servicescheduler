@@ -443,7 +443,7 @@ class Services Extends Resource
 						   $one_arr['startdatetime'] = $row['startdatetime'];
 						   $one_arr['enddatetime'] = $row['enddatetime'];
 						   $one_arr['alert'] = $row['alert'];
-						   $one_arr['abbrtzname'] = $row['abbrtzname'];
+						   $one_arr['tzid'] = $row['tzid'];
 						   $one_arr['members'] = "";
 						   $one_arr['createdtime'] = $row['createdtime'];
 						   $one_arr['lastmodified'] = $row['lastmodified'];
