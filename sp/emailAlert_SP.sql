@@ -11,7 +11,8 @@
   `Service_Name` varchar(100) NOT NULL,
   `Description` varchar(200) NOT NULL,
   `SDescription` varchar(200) NOT NULL,
-  `SUTC_Off` int(10) NOT NULL,
+  `Tz_Name` varch(100) NOT NULL,
+  `Abbr`    varch(10) NOT NULL,
   `Start_Datetime` INT(10) NOT NULL,
   `Cur_Datetime` INT(10) NOT NULL,
   `Alert_Setting` int(11) NOT NULL,
@@ -19,10 +20,11 @@
   ) Engine=MyISAM;
   
 
- Insert into tmp_alert (Schedule_Id,Service_Id,Service_Name,Description,SDescription,SUTC_Off,Start_Datetime,Cur_Datetime,Alert_Setting,Alert)
-  SELECT distinct sc.Schedule_Id,s.Service_Id,s.Service_Name,s.Description,sc.Description,s.UTC_Off,sc.Start_Datetime,UNIX_TIMESTAMP(UTC_TIMESTAMP()),s.Alert,0
-  from service s, schedule sc 
+ Insert into tmp_alert (Schedule_Id,Service_Id,Service_Name,Description,SDescription,Tz_Name.Abbr,Start_Datetime,Cur_Datetime,Alert_Setting,Alert)
+  SELECT distinct sc.Schedule_Id,s.Service_Id,s.Service_Name,s.Description,sc.Description,tz.Tz_Name, tz.abbr,sc.Start_Datetime,UNIX_TIMESTAMP(UTC_TIMESTAMP()),s.Alert,0
+  from service s, schedule sc, timezonedb tz
   where s.Service_Id = sc.Service_Id
+   and tz.Id = sc.
    and (sc.Start_Datetime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) <= 172800 
    and (sc.Start_Datetime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > 0
    and (sc.Is_Deleted = 0)
