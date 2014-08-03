@@ -172,6 +172,7 @@ class Creator Extends Resource
 		
 	}
 	// this is to set token in the server for push notification
+	// 07/04/2014 dding:  Add deviceid to record different token
 	Protected function settoken($body_parms) {
 	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
@@ -179,6 +180,8 @@ class Creator Extends Resource
 		$userid = $body_parms['userid'];
 		$token = $body_parms['token'];
 		$udid = $body_parms['udid'];
+		// record the device ID. It is set by the parameter "d" in the every call
+		$deviceid = $this->deviceid;
 		 
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 	  
@@ -191,7 +194,7 @@ class Creator Extends Resource
 		
         if (mysqli_num_rows($data) == 1) {
 			//update the token
-			$updatetoken = "update userlog set Token = '$token', User_Id = '$userid', Last_Modified = NOW() WHERE Udid = '$udid'"; 
+			$updatetoken = "update userlog set Token = '$token', User_Id = '$userid', Device_Id = '$deviceid', Last_Modified = NOW() WHERE Udid = '$udid'"; 
 							
 			$result = mysqli_query($dbc,$updatetoken) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
@@ -201,8 +204,8 @@ class Creator Extends Resource
 	    }
 		else {
 			// insert the token
-			$settoken = "insert userlog(User_Id,Udid,Token,Created_Time,Last_Modified) 
-			                values('$userid','$udid','$token',NOW(),NOW())";
+			$settoken = "insert userlog(User_Id,Udid,Token,Device_Id,Created_Time,Last_Modified) 
+			                values('$userid','$udid','$token','$deviceid',NOW(),NOW())";
 			$result = mysqli_query($dbc,$settoken) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
