@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS `appdevice` (
   `Enforce_Flag` tinyint(4) DEFAULT '0',
   `OS` varchar(100) NOT NULL,
   `OS_Version` varchar(100) DEFAULT NULL,
+  `Message` varchar(500) NOT NULL,
   `Created_DateTime` datetime NOT NULL
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
@@ -40,8 +41,8 @@ CREATE TABLE IF NOT EXISTS `appdevice` (
 --
 
 INSERT INTO `appdevice` (`Id`, `App_Version`, `Enforce_Flag`, `OS`, `OS_Version`, `Created_DateTime`) VALUES
-(1, '1.3.0', 0, 'IOS', '7.0', '2014-06-28 00:00:00'),
-(2, '1.4.0', 0, 'ANDROID', '4.1', '2014-06-28 00:00:00');
+(0, '1.3.0', 0, 'IOS', '7.0', '', '2014-06-28 00:00:00'),
+(1, '1.4.0', 0, 'ANDROID', '4.1', '', '2014-06-28 00:00:00');
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
