@@ -5,6 +5,7 @@ abstract class Resource
 
 	protected $version;
 	protected $lastid;
+	protected $deviceid;
 	/**
 	public function __construct() {
     }
@@ -21,6 +22,22 @@ abstract class Resource
 		}
 		else
 			$this->version = 1;
+		
+		if (isset($request->parameters['d'])) {
+			$_deviceid = $request->parameters['d'];
+			
+			switch ($_deviceid) {
+				case "IOS":
+					$this->deviceid = 0;
+					break;
+				case "ANDROID":
+					$this->deviceid = 1;
+					break;
+				case "WEB":
+					$this->deviceid = 2;
+					break;
+			}	
+		}
 		
 		// set up the lastid for the last ID for the table serverlog
 		$this->lastid = $request->lastid;
