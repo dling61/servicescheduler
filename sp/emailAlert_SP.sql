@@ -11,26 +11,49 @@
   `Service_Name` varchar(100) NOT NULL,
   `Description` varchar(200) NOT NULL,
   `SDescription` varchar(200) NOT NULL,
-  `Tz_Name` varch(100) NOT NULL,
-  `Abbr`    varch(10) NOT NULL,
+  `Tz_Name` varchar(100) NOT NULL,
+  `Abbr`    varchar(100) NOT NULL,
   `Start_Datetime` INT(10) NOT NULL,
   `Cur_Datetime` INT(10) NOT NULL,
   `Alert_Setting` int(11) NOT NULL,
   `Alert` int(11) NOT NULL
   ) Engine=MyISAM;
-  
 
- Insert into tmp_alert (Schedule_Id,Service_Id,Service_Name,Description,SDescription,Tz_Name.Abbr,Start_Datetime,Cur_Datetime,Alert_Setting,Alert)
-  SELECT distinct sc.Schedule_Id,s.Service_Id,s.Service_Name,s.Description,sc.Description,tz.Tz_Name, tz.abbr,sc.Start_Datetime,UNIX_TIMESTAMP(UTC_TIMESTAMP()),s.Alert,0
+ Insert into tmp_alert 
+   (
+		Schedule_Id,
+		Service_Id,
+		Service_Name,
+		Description,
+		SDescription,
+		Tz_Name,
+		Abbr,
+		Start_Datetime,
+		Cur_Datetime,
+		Alert_Setting,
+		Alert
+	)
+  SELECT distinct 
+        sc.Schedule_Id,
+		s.Service_Id,
+		s.Service_Name,
+		s.Description,
+		sc.Description,
+		tz.Tz_Name, 
+		tz.abbr,
+		sc.Start_Datetime,
+		UNIX_TIMESTAMP(UTC_TIMESTAMP()),
+		sc.Alert,
+		0
   from service s, schedule sc, timezonedb tz
   where s.Service_Id = sc.Service_Id
-   and tz.Id = sc.
+   and tz.Id = sc.Tz_Id
    and (sc.Start_Datetime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) <= 172800 
    and (sc.Start_Datetime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > 0
    and (sc.Is_Deleted = 0)
    and (s.Is_Deleted = 0)
-   and (s.Alert != 0)
-   and (s.Alert != 1);
+   and (sc.Alert != 0)
+   and (sc.Alert != 1);
    
   BEGIN 
       DECLARE done INT DEFAULT FALSE;
@@ -68,9 +91,10 @@
       DECLARE userid INT(11);
 	  DECLARE sname VARCHAR(100);
 	  DECLARE stime DATETIME;
-	  DECLARE temp VARCHAR(100);
-	  
-      DECLARE cur2 CURSOR FOR SELECT distinct us.User_Id,tmp.Service_Name,FROM_UNIXTIME(tmp.Start_Datetime + tmp.SUTC_Off)
+	  DECLARE temp_token VARCHAR(100);
+	  DECLARE temp_deviceid INT(2);
+	  -- Remove the standard time off set 
+      DECLARE cur2 CURSOR FOR SELECT distinct us.User_Id,tmp.Service_Name,FROM_UNIXTIME(tmp.Start_Datetime)
 		FROM tmp_alert tmp, onduty dt, member mb, user us
 		WHERE tmp.Alert = 1
             and dt.Schedule_Id = tmp.Schedule_Id
@@ -86,18 +110,18 @@
         IF done2 THEN
           LEAVE insert_loop;
         END IF;
-        		SELECT Token into temp FROM userlog WHERE User_Id = userid  ORDER BY Last_Modified DESC 
+        		SELECT Token, Device_Id into temp_token, temp_deviceid FROM userlog WHERE User_Id = userid  ORDER BY Last_Modified DESC 
 LIMIT 1;	
-		if (temp is not NULL) then
-			insert into pushqueue (Target_Token, Message, Created_Time)
-			values (temp,  CONCAT(sname,' will occur at ',stime), NOW());
+		if (temp_token is not NULL) then
+			insert into pushqueue (Target_Token, Device_Id, Message, Created_Time)
+			values (temp_token, temp_deviceid, CONCAT(sname,' will occur at ',stime), NOW());
 		end if;
       END LOOP;
       CLOSE cur2;
       SET SQL_SAFE_UPDATES=1;
   END;
-	
-    SELECT distinct tmp.Service_Name servicename,tmp.Description descp,tmp.SDescription sdescp,FROM_UNIXTIME(tmp.Start_Datetime + tmp.SUTC_Off) starttime,tmp.Cur_Datetime curtime,
+	-- Remove the standard time offset and directly return UTC for start time
+    SELECT distinct tmp.Service_Name servicename,tmp.Description descp,tmp.SDescription sdescp,FROM_UNIXTIME(tmp.Start_Datetime) starttime,tmp.Cur_Datetime curtime,
          mb.Member_Email memail, mb.Member_Name mname, us.User_Name uname, us.Email uemail, us.Mobile umobile, tmp.Alert_setting alertsetting
       FROM tmp_alert tmp, onduty dt, member mb, user us
       WHERE tmp.Alert = 1
