@@ -21,60 +21,58 @@ class Applens
 	function start()
 	{
 		writeToLog('Connecting to ' . $this->server);
-
-		if (!$this->connectToAPNS())
-			exit;
-
-		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
-		mysqli_select_db($dbc, DB_NAME);
+		if ($this->connectToAPNS())
+		{	
+			$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+			mysqli_select_db($dbc, DB_NAME);
+			// Only pick up the items with the device Id = 0 (Apple NS)
+			$queryqueue = "SELECT Pushqueue_Id,Target_Token,Message FROM pushqueue WHERE Sent_Time is Null and Device_Id = 0";
+			$data = mysqli_query($dbc,$queryqueue);
 			
-		$queryqueue = "SELECT Pushqueue_Id,Target_Token,Message FROM pushqueue WHERE Sent_Time is Null";
-		$data = mysqli_query($dbc,$queryqueue);
-		
-		if ($data) {
-			$num_rows = mysqli_num_rows($data);
-		  
-			$number = 0;
-			while ($row = mysqli_fetch_array($data))  
-			{		
-					// Gather the $row values into local variables 
-					$queueid = $row["Pushqueue_Id"];
-					$token	 = $row["Target_Token"];
-					$message = $row["Message"];
-					// Create the payload body
-					$body['aps'] = array(
-									'alert' => $message,
-									'sound' => 'default'
-								);
+			if ($data) {
+				$num_rows = mysqli_num_rows($data);
+			  
+				$number = 0;
+				while ($row = mysqli_fetch_array($data))  
+				{		
+						// Gather the $row values into local variables 
+						$queueid = $row["Pushqueue_Id"];
+						$token	 = $row["Target_Token"];
+						$message = $row["Message"];
+						// Create the payload body
+						$body['aps'] = array(
+										'alert' => $message,
+										'sound' => 'default'
+									);
 
-					// Encode the payload as JSON
-					$payload = json_encode($body);
-					if ($this->sendNotification($queueid, $token, $payload))
-					{
-						$stmt = "UPDATE pushqueue SET Sent_Time = NOW() WHERE Pushqueue_Id = '$queueid'";
-						mysqli_query($dbc,$stmt);
-						$number++;
-					}
-					else  // failed to deliver
-					{
-						$this->reconnectToAPNS();
-					}
-					// send 20 messages and take a rest
-					if ($number == 20)
-					{
-						sleep(5);
-						$number = 0;
-					}
-					else 
-						$number++;	
+						// Encode the payload as JSON
+						$payload = json_encode($body);
+						if ($this->sendNotification($queueid, $token, $payload))
+						{
+							$stmt = "UPDATE pushqueue SET Sent_Time = NOW() WHERE Pushqueue_Id = '$queueid'";
+							mysqli_query($dbc,$stmt);
+							$number++;
+						}
+						else  // failed to deliver
+						{
+							$this->reconnectToAPNS();
+						}
+						// send 20 messages and take a rest
+						if ($number == 20)
+						{
+							sleep(5);
+							$number = 0;
+						}
+						else 
+							$number++;	
+				}
+			
+				// Free the result set  
+				mysqli_free_result($data);
 			}
-		
-			// Free the result set  
-			mysqli_free_result($data);
-		}
-		mysqli_close($dbc);
-        $this->disconnectFromAPNS();
-			
+			mysqli_close($dbc);
+			$this->disconnectFromAPNS();
+		}	
 	}
 
 	// Opens an SSL/TLS connection to Apple's Push Notification Service (APNS).
