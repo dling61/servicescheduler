@@ -2,6 +2,7 @@
 	// server different from the dev environemnt
 	require_once('constants.php');
 	require_once('class_applens.php');
+	require_once('class_androidns.php');
 
 	// send an email to some one from godaddy
 	function send_mail_godaddy($to, $subject, $body)
@@ -23,7 +24,7 @@
 
 		// The SSL certificate that allows us to connect to the APNS servers
 		'certificate' => 'ck.pem',
-		'passphrase' => 'push',
+		'passphrase' => '12345678@X',
 
 		// Name and path of our log file
 		'logfile' => '../'.LOG_LOCATION.'/pushns.log'
@@ -37,7 +38,7 @@
 
 		// The SSL certificate that allows us to connect to the APNS servers
 		'certificate' => 'ck_production.pem',
-		'passphrase' => 'nan1jing',
+		'passphrase' => '12345678@X',
 
 		// Name and path of our log file
 		'logfile' => '../'.LOG_LOCATION.'/pushns.log'
@@ -67,7 +68,7 @@
     // 2. Send notifications
     $mode = PUSH_MODE;
     $config = $config[$mode];
-    
+    writeToLog("Start Job");
 	$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME) or die('Database Error 2!');
 	// call a stored procedure to get the list of members to notify
 	$data = mysqli_query($dbc, "CALL emailAlert()") or die("Error is: \n ".mysqli_error($dbc));
@@ -131,10 +132,14 @@
 
 		//$mode = PUSH_MODE;
 		//$config = $config[$mode];
-		writeToLog("Push script started ($mode mode)");
+		writeToLog("IOS Push script started ($mode mode)");
 
 		$obj = new Applens($config);
 		$obj->start();
+		
+		writeToLog("Android Push script started");
+		$android_obj = new Androidns();
+		$android_obj->start();
 		
 		writeToLog("Finished");
 	}
