@@ -190,7 +190,7 @@ class Creator Extends Resource
 		$data = mysqli_query($dbc, $query);
 		
 		if (DEBUG_FLAG == 1)
-			logserveronce("Settoken","POST", 'UserID: '.$userid.' '.'Udid: '.$udid.' '.'Token: '.$token, "");
+			logserveronce("Settoken","POST", 'DeviceID: '.$deviceid.' '.'UserID: '.$userid.' '.'Udid: '.$udid.' '.'Token: '.$token, "");
 		
         if (mysqli_num_rows($data) == 1) {
 			//update the token
