@@ -16,7 +16,7 @@ DELIMITER $$
           WHERE t.Active_Flag = 1 order by 1;
 
   -- Enforce update
-  SELECT a.id id, a.App_Version appversion, a.Enforce_Flag enforce, a.OS os, a.OS_version osversion
+  SELECT a.id id, a.App_Version appversion, a.Enforce_Flag enforce, a.OS os, a.OS_version osversion, a.Message msg
 	FROM appdevice a;
 
  
