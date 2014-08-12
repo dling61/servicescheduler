@@ -145,6 +145,7 @@ class Serversetting Extends Resource
 						$three_arr['enforce'] = $row['enforce'];
 						$three_arr['os'] = $row['os'];
 						$three_arr['osversion'] = $row['osversion'];
+						$three_arr['msg'] = $row['msg'];
 						
 						$appdevices_arr[$k] = $three_arr;
 					    $k++;
