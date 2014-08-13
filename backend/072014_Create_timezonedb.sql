@@ -44,12 +44,12 @@ CREATE TABLE IF NOT EXISTS `timezonedb` (
 --
 
 INSERT INTO `timezonedb` (`Id`, `Tz_Name`, `Display_Name`, `Display_Order`, `Active_Flag`, `Created_DateTime`, `Effective_Date`, `End_Date`, `Abbr`) VALUES
-(1, 'Pacific/Honolulu', '(UTC-10:00) Hawaii', 1, 1, '2014-05-25 21:17:10', '0000-00-00', '0000-00-00', 'HAST'),
-(2, 'America/Anchorage', '(UTC-10:00) Alaska', 2, 1, '2014-05-25 21:15:46', '0000-00-00', '0000-00-00', 'AKST'),
-(3, 'America/Los_Angeles', '(UTC-08:00) Pacific Time (US & Canada', 3, 1, '2014-05-25 21:15:46', '0000-00-00', '0000-00-00', 'PST'),
-(4, 'America/Phoenix', '(UTC-07:00) Mountain Time (US & Canada', 4, 1, '2014-05-25 21:15:46', '0000-00-00', '0000-00-00', 'MST'),
-(5, 'America/Chicago', '(UTC-06:00) Central Time (US & Canada', 5, 1, '2014-05-25 21:15:46', '0000-00-00', '0000-00-00', 'CST'),
-(6, 'America/New_York', '(UTC-05:00) Eastern Time', 6, 1, '2014-05-25 21:15:46', '0000-00-00', '0000-00-00', 'EST');
+(1, 'Pacific/Honolulu', '(UTC-10:00) Hawaii', 5, 1, '2014-05-25 21:17:10', '0000-00-00', '0000-00-00', 'HAST'),
+(2, 'America/Anchorage', '(UTC-10:00) Alaska', 6, 1, '2014-05-25 21:15:46', '0000-00-00', '0000-00-00', 'AKST'),
+(3, 'America/Los_Angeles', '(UTC-08:00) Pacific Time (US & Canada)', 1, 1, '2014-05-25 21:15:46', '0000-00-00', '0000-00-00', 'PST'),
+(4, 'America/Phoenix', '(UTC-07:00) Mountain Time (US & Canada)', 2, 1, '2014-05-25 21:15:46', '0000-00-00', '0000-00-00', 'MST'),
+(5, 'America/Chicago', '(UTC-06:00) Central Time (US & Canada)', 3, 1, '2014-05-25 21:15:46', '0000-00-00', '0000-00-00', 'CST'),
+(6, 'America/New_York', '(UTC-05:00) Eastern Time', 4, 1, '2014-05-25 21:15:46', '0000-00-00', '0000-00-00', 'EST');
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
