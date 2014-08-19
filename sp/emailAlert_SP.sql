@@ -91,7 +91,7 @@
       DECLARE userid INT(11);
 	  DECLARE sname VARCHAR(100);
 	  DECLARE stime DATETIME;
-	  DECLARE temp_token VARCHAR(100);
+	  DECLARE temp_token VARCHAR(4096);
 	  DECLARE temp_deviceid INT(2);
 	  -- Remove the standard time off set 
       DECLARE cur2 CURSOR FOR SELECT distinct us.User_Id,tmp.Service_Name,FROM_UNIXTIME(tmp.Start_Datetime)
