@@ -1,14 +1,15 @@
 <?php
 class Applens
 {
-    private $fp = NULL;
-		private $server;
-		private $certificate;
-		private $passphrase;
+    private $fp;
+	private $server;
+	private $certificate;
+	private $passphrase;
 		
 
 	function __construct($config)
 	{
+		$this->fp = null;
 		$this->server = $config['server'];
 		$this->certificate = $config['certificate'];
 		$this->passphrase = $config['passphrase'];
