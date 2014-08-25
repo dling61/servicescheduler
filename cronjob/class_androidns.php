@@ -32,16 +32,14 @@ class Androidns
 					$registration_id = $row["Target_Token"];
 					$message = $row["Message"];
 			
-					if ($this->sendNotification($queueid, $registration_id, $payload))
+					if ($this->sendNotification($queueid, $registration_id, $message))
 					{
+					    writeToLog('Queueid: ' . $queueid . 'Succssfully');
 						$stmt = "UPDATE pushqueue SET Sent_Time = NOW() WHERE Pushqueue_Id = '$queueid'";
 						mysqli_query($dbc,$stmt);
 						$number++;
 					}
-					else {
-					   writeToLog('Queueid: ' . $queueid . 'failed');
-					}
-				
+					
 					// send 20 messages and take a rest
 					if ($number == 20)
 					{
@@ -75,10 +73,13 @@ class Androidns
 		//	'sound'		=> 1
 		//);
 	   
+	   $registrationid = array($registration_id);
+	   $msg = array(
+	           'message' => $message);
  
         $fields = array(
-            'registration_ids' => $registatoin_id,
-            'data' => $message,
+            'registration_ids' => $registrationid,
+            'data' => $msg,
         );
  
         $headers = array(
@@ -87,37 +88,32 @@ class Androidns
         );
 		writeToLog('Connecting to Android: ' . $url);
 		writeToLog('QueueId: ' . $queueid);
-		try {
-			// Open connection
-			$ch = curl_init();
-	 
-			// Set the url, number of POST vars, POST data
-			curl_setopt($ch, CURLOPT_URL, $url);
-	 
-			curl_setopt($ch, CURLOPT_POST, true);
-			curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-			curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-	 
-			// Disabling SSL Certificate support temporarly
-			curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-			curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
-	 
-			// Execute post
-			$result = curl_exec($ch);
-			if ($result['curl_error'])    throw new Exception($result['curl_error']);
-			if ($result['http_code']!='200')    throw new Exception("HTTP Code = ".$result['http_code']);
-			if (!$result['body'])        throw new Exception("Body of file is empty");
-		}
-		catch (Exception $e)
-			 writeToLog('Android Message not delivered');
-			 writeToLog($e->getMessage());
-			 curl_close($ch);
-			 return FALSE;
+		
+		// Open connection
+		$ch = curl_init();
+ 
+		// Set the url, number of POST vars, POST data
+		curl_setopt($ch, CURLOPT_URL, $url);
+ 
+		curl_setopt($ch, CURLOPT_POST, true);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+ 
+		// Disabling SSL Certificate support temporarly
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($fields));
+ 
+		// Execute post
+		$result = curl_exec($ch);
+			
+		if ($result == false) {
+		  writeToLog('Failed to send message to GOM Server');
+		  writeToLog('Error is ' . curl_error($ch));
+		  return FALSE;
 		}
 		
 		// Close connection
         curl_close($ch);
-		writeToLog('Android Message successfully delivered');
 		return TRUE;	
 	}
 
