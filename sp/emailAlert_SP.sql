@@ -121,7 +121,7 @@ LIMIT 1;
       SET SQL_SAFE_UPDATES=1;
   END;
 	-- Remove the standard time offset and directly return UTC for start time
-    SELECT distinct tmp.Service_Name servicename,tmp.Description descp,tmp.SDescription sdescp,FROM_UNIXTIME(tmp.Start_Datetime) starttime,tmp.Cur_Datetime curtime,
+    SELECT distinct tmp.Service_Name servicename,tmp.Description descp,tmp.SDescription sdescp,FROM_UNIXTIME(tmp.Start_Datetime) starttime,tmp.Tz_Name tzname, tmp.Abbr abbr,
          mb.Member_Email memail, mb.Member_Name mname, us.User_Name uname, us.Email uemail, us.Mobile umobile, tmp.Alert_setting alertsetting
       FROM tmp_alert tmp, onduty dt, member mb, user us
       WHERE tmp.Alert = 1
