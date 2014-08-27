@@ -82,26 +82,25 @@
 			$member_name = $row0['mname'];
 			$service_name = $row0['servicename'];
 			$start_datetime = $row0['starttime'];
-			$curdatetime = $row0['curtime'];
+			$tzname = $row0['tzname'];
+			$abbr = $row0['abbr'];
 			$description = $row0['descp'];
 			$sdescription = $row0['sdescp'];
 			$user_name = $row0['uname'];
 			$user_email = $row0['uemail'];
 			$user_mobile = $row0['umobile'];
 			$alertsetting = $row0['alertsetting'];
-		
-			// find out the alert setting 
-			$alert_table = array('0' => "Now",'1' => "5 Minutes",'2' => "15 Minutes",'3' => "30 Minutes", '4' => "1 hour",
-						'5' => "2 hour",'6' => "one day",'7' => "two days");
-				
-            $warning = $alert_table[$alertsetting];
+			
+			// convert start datetime to the local date time
+			$dateObj = new DateTime($start_datetime, new DateTimeZone('UTC'));
+			$dateObj->setTimezone(new DateTimeZone($tzname)); 
 			
 			$mail_To = $member_email;
 			$mail_Body  = '<html>
 			<body bgcolor="" topmargin="25">
 			Hi ' . $member_name . ',<br>
 			<br>
-			Your activity '. $service_name . ' is scheduled to occur at ' . $start_datetime . ' .<br>
+			Your activity '. $service_name . ' is scheduled to occur at ' . $dateObj->format('m-d-Y g:i A') . '(' . $abbr . ')' . ' .<br>
 			<br>
 			If you have any questions, please contact your activity organizer ' . $user_name . ' at ' . $user_email . ' or phone ' . $user_mobile . ' .<br>
             <br>
@@ -125,15 +124,13 @@
 	$data->close();
 	mysqli_close($dbc);	
   
-	// this is for Push Notification
+	// this is for Push Notification on both IPhone and Android
 	try
 	{
 		//ini_set('display_errors', 'off');
-
 		//$mode = PUSH_MODE;
 		//$config = $config[$mode];
 		writeToLog("IOS Push script started ($mode mode)");
-
 		$obj = new Applens($config);
 		$obj->start();
 		
