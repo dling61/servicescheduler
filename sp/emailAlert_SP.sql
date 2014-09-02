@@ -91,10 +91,12 @@
       DECLARE userid INT(11);
 	  DECLARE sname VARCHAR(100);
 	  DECLARE stime DATETIME;
+	  DECLARE lstime DATETIME;
+	  DECLARE tzname VARCHAR(100);
 	  DECLARE temp_token VARCHAR(4096);
 	  DECLARE temp_deviceid INT(2);
 	  -- Remove the standard time off set 
-      DECLARE cur2 CURSOR FOR SELECT distinct us.User_Id,tmp.Service_Name,FROM_UNIXTIME(tmp.Start_Datetime)
+      DECLARE cur2 CURSOR FOR SELECT distinct us.User_Id,tmp.Service_Name,FROM_UNIXTIME(tmp.Start_Datetime),tmp.Tz_Name
 		FROM tmp_alert tmp, onduty dt, member mb, user us
 		WHERE tmp.Alert = 1
             and dt.Schedule_Id = tmp.Schedule_Id
@@ -106,15 +108,17 @@
       SET SQL_SAFE_UPDATES=0;
       OPEN cur2;
       insert_loop: LOOP
-        FETCH cur2 INTO userid, sname, stime;
+        FETCH cur2 INTO userid, sname, stime, tzname;
         IF done2 THEN
           LEAVE insert_loop;
         END IF;
         		SELECT Token, Device_Id into temp_token, temp_deviceid FROM userlog WHERE User_Id = userid  ORDER BY Last_Modified DESC 
 LIMIT 1;	
 		if (temp_token is not NULL) then
+		    -- convert UTC time to the local time
+			select CONVERT_TZ(stime, 'GMT',tzname) into lstime;
 			insert into pushqueue (Target_Token, Device_Id, Message, Created_Time)
-			values (temp_token, temp_deviceid, CONCAT(sname,' will occur at ',stime), NOW());
+			values (temp_token, temp_deviceid, CONCAT_WS(' ',sname,'will occur at',lstime,tzname), NOW());
 		end if;
       END LOOP;
       CLOSE cur2;
