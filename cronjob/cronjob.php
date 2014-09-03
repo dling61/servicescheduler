@@ -102,10 +102,16 @@
 			<br>
 			Your activity '. $service_name . ' is scheduled to occur at ' . $dateObj->format('m-d-Y g:i A') . '(' . $abbr . ')' . ' .<br>
 			<br>
+			' . $sdescription . '
+			<br>
+			<br>
 			If you have any questions, please contact your activity organizer ' . $user_name . ' at ' . $user_email . ' or phone ' . $user_mobile . ' .<br>
             <br>
 			<br>
-			To view all schedules for this activity or create your own activity schedules, please go to http://www.cschedule.com.<br>
+			To view all schedules for this activity or create your own activity schedules, please use CSchedule for <a href="https://itunes.apple.com/us/app/cschedule/id596231825?mt=8">IPhone</a>
+			or <a href="https://play.google.com/store/apps/details?id=com.e2wstudy.cschedule">Android</a>
+			<br>
+			You can also go to the CSchedule web site http://www.cschedule.com<br> 
 			<br>
 			<br>
 			Thank You,
