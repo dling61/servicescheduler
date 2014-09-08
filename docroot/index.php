@@ -9,16 +9,6 @@
 	require_once('class_serversetting.php');
 	
 	// 08/16/2013: Moved this to GitHub for source code version control
-	
-	//Define our id-key pairs
-	$applications = array(
-	    // for IOS
-		'IOS' => '28e336ac6c9423d946ba02dddd6a2632', //randomly generated app key 
-		// for Andriod
-		'ANDROID' => '28e336ac6c9423d946ba02d19c6a2633', //randomly generated app key 
-		// for Web App
-		'WEB' => '28e336ac6c9423d946ba02d19c6a2634', //randomly generated app key 
-	);
 
 	//get all the information from http call
 	$request = new Request();
