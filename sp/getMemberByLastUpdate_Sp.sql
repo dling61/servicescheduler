@@ -3,7 +3,7 @@
   CREATE PROCEDURE `getMemberByLastUpdate`(IN ownerid INT, IN p_lastupdate Datetime)
   BEGIN
   
-  
+  --- Comment this out
 -- drop the temporary table if exists
   Drop table if exists tmp_member;
   -- create the temporary table, here you could use Engine=Memory
