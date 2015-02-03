@@ -2,6 +2,10 @@
   DROP PROCEDURE IF EXISTS emailAlert;
   CREATE PROCEDURE `emailAlert`()
   BEGIN
+
+  DECLARE cur_time INT(11);
+
+  SET cur_time = UNIX_TIMESTAMP(UTC_TIMESTAMP());
   
 
  Drop table if exists tmp_alert;
@@ -42,14 +46,14 @@
 		tz.Tz_Name, 
 		tz.abbr,
 		sc.Start_Datetime,
-		UNIX_TIMESTAMP(UTC_TIMESTAMP()),
+		cur_time,
 		sc.Alert,
 		0
   from service s, schedule sc, timezonedb tz
   where s.Service_Id = sc.Service_Id
    and tz.Id = sc.Tz_Id
-   and (sc.Start_Datetime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) <= 172800 
-   and (sc.Start_Datetime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > 0
+   and (sc.Start_Datetime - cur_time) <= 604800 
+   and (sc.Start_Datetime - cur_time) > 0
    and (sc.Is_Deleted = 0)
    and (s.Is_Deleted = 0)
    and (sc.Alert != 0)
@@ -68,21 +72,21 @@
         IF done THEN
           LEAVE read_loop;
         END IF;
-        IF (sr = 2) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (900 + 400) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (900 - 400)) THEN                  
+        IF (sr = 2) AND ((sdtime - cur_time) <= (900 + 840) and (sdtime - cur_time) >= (900 - 60)) THEN                  
 			update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-        ELSEIF (sr = 3) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (1800 + 400) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (1800 - 400)) THEN
+        ELSEIF (sr = 3) AND ((sdtime - cur_time) <= (1800 + 840) and (sdtime - cur_time) >= (1800 - 60)) THEN
 			update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-        ELSEIF (sr = 4) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (3600 + 400) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (3600 - 400)) THEN
+        ELSEIF (sr = 4) AND ((sdtime - cur_time) <= (3600 + 840) and (sdtime - cur_time) >= (3600 - 60)) THEN
 			update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-        ELSEIF (sr = 5) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (7200 + 400) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (7200 - 400)) THEN
+        ELSEIF (sr = 5) AND ((sdtime - cur_time) <= (7200 + 840) and (sdtime - cur_time) >= (7200 - 60)) THEN
 			update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-        ELSEIF (sr = 6) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (86400 + 400) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (86400 - 400)) THEN             
+        ELSEIF (sr = 6) AND ((sdtime - cur_time) <= (86400 + 840) and (sdtime - cur_time) >= (86400 - 60)) THEN             
 			update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-        ELSEIF (sr = 7) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (172800 + 400) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (172800 - 400)) THEN           
+        ELSEIF (sr = 7) AND ((sdtime - cur_time) <= (172800 + 840) and (sdtime - cur_time) >= (172800 - 60)) THEN           
 			update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-	ELSEIF (sr = 8) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (259200 + 400) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (259200 - 400)) THEN           
+	ELSEIF (sr = 8) AND ((sdtime - cur_time) <= (259200 + 840) and (sdtime - cur_time) >= (259200 - 60)) THEN           
 			update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
-	ELSEIF (sr = 9) AND ((sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) < (604800 + 400) and (sdtime - UNIX_TIMESTAMP(UTC_TIMESTAMP())) > (604800 - 400)) THEN           
+	ELSEIF (sr = 9) AND ((sdtime - cur_time) <= (604800 + 840) and (sdtime - cur_time) >= (604800 - 60)) THEN           
 			update tmp_alert lu set lu.Alert = 1  where lu.Schedule_id = sid;
         END IF;
       END LOOP;
