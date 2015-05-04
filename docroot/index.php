@@ -11,6 +11,8 @@
 	require_once('class_community.php');
 	require_once('class_event.php');
 	require_once('class_task.php');
+	require_once('class_participant.php');
+	require_once('class_participantgroup.php');
 	
 	// 08/16/2013: Moved this to GitHub for source code version control
 

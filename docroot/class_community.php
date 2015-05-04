@@ -217,6 +217,7 @@ class Community Extends Resource
 	
 	// This is a function to get the latest Ids for this user
 	// So this user can continue to generate valid Ids
+	// Not being used:. This function was moved to the login API (03/29/2015)
 	Protected function pgetlastupdate($ownerid, $lastupdatetime) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 	
@@ -275,7 +276,8 @@ class Community Extends Resource
 	}
 	
 	// This is to get list of participants
-	Protected function pgetlastupdate_sm($serviceid, $ownerid, $lastupdatetime) {
+	// API 1.5 04/20/2015
+	Protected function pgetlastupdate_sm($communityid, $ownerid, $lastupdatetime) {
 	    
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 	
@@ -283,7 +285,7 @@ class Community Extends Resource
 		$query = "SELECT sm.Is_Deleted isdeleted, sm.User_Id userid, m.Email useremail, m.User_Name username, m.Mobile mobilenumber, ".
 		    " sm.Creator_Id creatorid, sm.Service_Id communityid, sm.Created_Time createdtime, sm.Last_Modified lastmodified, sm.User_Role userrole ".
  		    " FROM participant sm, user m ".
-			"where sm.User_Id = m.User_Id and sm.Service_Id = '$serviceid' and ".
+			"where sm.User_Id = m.User_Id and sm.Service_Id = '$communityid' and ".
      		"(sm.Last_Modified > '$lastupdatetime' or m.Last_Modified > '$lastupdatetime')";
 			
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc)); 
@@ -336,6 +338,106 @@ class Community Extends Resource
 		mysqli_close($dbc);	
 	}
 	
+	// This is to get list of participant groups and its users
+	// API 1.5 04/20/2015
+	Protected function pgetlastupdate_pg($communityid, $ownerid, $lastupdatetime) {
+	    
+		$return_arr = array();
+		$delpgroup_arr = array();
+		$pgroup_arr = array();
+		$user_att = array();
+		
+		$mysql = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		// call a stored procedure to get the list of participant groups and their users
+		if ($mysql->multi_query("CALL getPGroupByLastUpdate('$communityid', '$lastupdatetime')")) {
+	   
+          $h = 0;
+		  //loop through two resultsets
+          do {
+            if ($result = $mysql->use_result())
+            {
+			    $i = 0;
+				$j = 0;
+				$k = 0;
+                //Loop the two result sets, reading it into an array
+                while ($row = $result->fetch_array(MYSQLI_ASSOC))
+                {
+                    if ($h == 0) {
+					   // first resultset 
+						$isdeleted = $row['isdeleted'];
+						
+						// if it's deleted, just add it to "deletedschedules"
+						if ($isdeleted == 1) {
+							$delpgroup_arr[$j] = $row['pgroupid'];
+							$j++;
+						}
+						else {
+						   $one_arr = array();
+						   $one_arr['participantgroupid'] = $row['pgroupid'];
+						   $one_arr['participantgroupname'] = $row['pgroupname'];
+						   $one_arr['user'] = "";
+						   $pgroup_arr[$i] = $one_arr;
+						   $i++;			   
+						}     
+					}
+					else {
+					   // second resultset 
+						$two_arr = array();
+						$two_arr['participantgroupid'] = $row['pgroupid'];
+						$two_arr['userid'] = $row['userid'];
+					
+					    $user_att[$k] = $two_arr;
+						$k++;
+					}
+                } // while end
+				
+                // Close the result set
+                $result->close();
+				$h++;
+            }
+          } while ($mysql->more_results() == TRUE && $mysql->next_result());
+        }
+        else
+        {
+            echo '<strong>Error Message ' . $mysql->error . '</strong></p>';
+        }
+		
+	    //$delschedule_str = array();
+		//$delschedule_str = implode(",", $delschedule_arr); // concat to the string separating by ,
+		
+		foreach ($pgroup_arr as &$svalue) {
+			$pgroupid = $svalue['participantgroupid'];
+			
+			// get the list of memberid and confirm associated with the schedule ID
+			//$members_str = '';
+			$user_str = array();
+			$i = 0;
+			foreach ($user_att as $mvalue) {
+			  if ($mvalue['participantgroupid'] == $pgroupid) {
+		
+				$user_str[$i] = $mvalue['userid'];
+				$i++;
+			  }
+			}
+			//insert members associated with the schedule into the schedules_arr TBD
+			$svalue['user'] = $user_str;
+		}
+		unset($svalue);
+		
+		$return_arr['deleted'] = $delpgroup_arr;
+		$return_arr['participantgroup'] = $pgroup_arr;
+         
+		$data2 = json_encode($return_arr);
+		echo $data2;
+		
+		// logserver if debug flag is set to 1
+		if (DEBUG_FLAG == 1)
+		    logserver_response($this->lastid,$data2);
+     
+		mysqli_close($mysql);	
+	}
+	
+	
 	// This is for get event API to get the latest events and tasks assigned to an event
 	// First result is for events; Second result is for tasks; Third result is for assignment
 	// This is for API 1.5  04/27/2015
@@ -376,7 +478,7 @@ class Community Extends Resource
 						else {
 						   $one_arr = array();
 						   $one_arr['eventid'] = $row['eventid'];
-						   //$one_arr['communityid'] = $row['communityid'];
+						   $one_arr['eventname'] = $row['eventname'];
 						   $one_arr['desp'] = $row['description'];
 						   $one_arr['startdatetime'] = $row['startdatetime'];
 						   $one_arr['enddatetime'] = $row['enddatetime'];
@@ -480,7 +582,7 @@ class Community Extends Resource
 		    logserver_response($this->lastid,$data2);
 	}
 	
-	// This is to add a participant to a community
+	// This is to add a participant to a community (04/29/2015)
 	Protected function insert_participant($serviceid, $body_param) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 		
@@ -523,8 +625,65 @@ class Community Extends Resource
 		mysqli_close($dbc);
 	}
 	
+	// This is to add a participant group to a community (04/29/2015)
+	Protected function insert_participantgroup($ownerid, $serviceid, $body_param) {
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+		 
+		$participantgroupid =   $body_param['participantgroupid'];
+		$participantgroupname = $body_param['participantgroupname'];
+		$user_arr =   $body_param['user'];
+	   
+		$query = "SELECT PGroup_Id FROM participantgroup WHERE PGroup_Id = $participantgroupid";
+        $data = mysqli_query($dbc, $query);
+		
+        if (mysqli_num_rows($data) == 1) {
+		    // community already exists
+			header('HTTP/1.0 201 This participant group exists already', true, 201);
+	    }
+		else {
+			try {
+				// start a transaction
+				mysqli_autocommit($dbc, FALSE);
+				// Insert this participant group if no exists
+				$queryinsert = "INSERT INTO participantgroup ".
+									"(PGroup_Id,PGroup_Name,Service_Id,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+									" values('$participantgroupid','$participantgroupname','$serviceid','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";
+				
+				$result = mysqli_query($dbc,$queryinsert) or die("Error is: \n ".mysqli_error($dbc));
+				if ($result !== TRUE) {
+					throw new Exception(mysqli_error($dbc));
+				}
+				
+				foreach($user_arr as $user) {
+					//insert each user into the table groupparticipant
+					$queryinsert1 = "INSERT INTO groupparticipant ".
+									"(PGroup_Id,User_Id,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+									" values('$participantgroupid','$user','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";
+					$result = mysqli_query($dbc,$queryinsert1) or die("Error is: \n ".mysqli_error($dbc));
+					if ($result !== TRUE) {
+						throw new Exception(mysqli_error($dbc));
+					}		
+				}
+				// commit to get everything done
+				mysqli_commit($dbc);
+			}
+			catch (Exception $e) {
+				mysqli_rollback($dbc);
+				mysqli_autocommit($dbc, TRUE);
+				header('HTTP/1.0 202 Can not create an participant group and its users', true, 202);
+				
+			}
+			
+			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+            echo $data2;			
+		}
+		$data->close();
+		mysqli_close($dbc);
+		
+	}
+	
 	// GET method here is to handle 3 cases
-	//  1. http://[REST_SERVER]/community?ownerid=12143&lastupdatetime=121333000
+	//  1. http://[REST_SERVER]/community/1234/participantgroup?ownerid=2222&lastupdatetime=121333000
 	//  2. http://[REST_SERVER]/community/1234/participant?ownerid=12434&lastupdatetime=121443232
 	//  3. http://[REST_SERVER]/community/1234/event?ownerid=11122@lastupdatetime=12121
 	public function get($request) {
@@ -534,8 +693,10 @@ class Community Extends Resource
 		header('Content-Type: application/json; charset=utf8');
 		$lastElement = end($request->url_elements);
 		reset($request->url_elements);
-		if ($lastElement == "community") {
-			$this->pgetlastupdate($ownerid, $lastupdatetime);
+		if ($lastElement == "participantgroup") {
+			// participant group
+			$communityid  = $request->url_elements[count($request->url_elements)-2];
+			$this->pgetlastupdate_pg($communityid, $ownerid, $lastupdatetime);
 		}
 		else if ($lastElement == "participant") {
 			// handle participant
@@ -547,9 +708,10 @@ class Community Extends Resource
 		}
     }
 
-	// This is the POST call to add a new service and share a service with a email
+	// This is the POST call to add a new community, participant, or participant group
 	//   1. POST http://servicescheduler.net/community
 	//   2. POST http://servicescheduler.net/community/1234/participant
+	//   3. POST http://[domain name]/community/1234/participantgroup
     public function post($request) {
 		$parameters1 = array();
         
@@ -568,7 +730,17 @@ class Community Extends Resource
 		    $serviceid  = $request->url_elements[count($request->url_elements)-2];
 			 //participant method
 			$this->insert_participant($serviceid, $request->body_parameters);
-		}   
+		} else if ($lastElement == "participantgroup") {
+			$serviceid  = $request->url_elements[count($request->url_elements)-2];
+			if ($request->body_parameters['participantgroup']) {
+				foreach($request->body_parameters['participantgroup'] as $param_name => $param_value) {
+							$parameters1[$param_name] = $param_value;
+				}
+			}
+			 //participant group method
+			$this->insert_participantgroup($request->body_parameters['ownerid'], $serviceid, $parameters1);
+		}
+		
     }
 	
 	// update a service with the service Id and update a role shared with activity

@@ -8,4 +8,4 @@ CREATE TABLE IF NOT EXISTS `groupparticipant` (
   `Created_Time` datetime NOT NULL,
   `Last_Modified` datetime NOT NULL,
   `Last_Modified_Id` int(11) NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
