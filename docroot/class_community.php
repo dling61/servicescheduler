@@ -497,6 +497,7 @@ class Community Extends Resource
 						$two_arr['taskname'] = $row['taskname'];
 						$two_arr['desp'] = $row['description'];
 						$two_arr['assignallowed'] = $row['assignallowed'];
+						$two_arr['assignedgroup'] = $row['assignedgroup'];
 					    $two_arr['assignment'] = "";
 						$task_arr[$k] = $two_arr;
 						$k++;
@@ -544,6 +545,7 @@ class Community Extends Resource
 					$task_temp_1['taskname'] = $mvalue['taskname'];
 					$task_temp_1['desp'] = $mvalue['desp'];
 					$task_temp_1['assignallowed'] = $mvalue['assignallowed'];
+					$task_temp_1['assignedgroup'] = $mvalue['assignedgroup'];
 					
 					$assignment_temp = array();
 					$j = 0;

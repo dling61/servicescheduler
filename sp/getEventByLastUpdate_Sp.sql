@@ -10,6 +10,7 @@
   	`eventid` int(11) NOT NULL,
   	`taskname` varchar(100) NOT NULL,
         `assignallowed` int(3) NOT NULL,
+	`assignedgroup` int(3) NOT NULL,
         `description` varchar(2000) NOT NULL
   	) Engine=MyISAM;
   
@@ -21,12 +22,12 @@
   
   -- create a temp table
   -- task list
-  Insert into tmp_task (taskid, eventid, taskname, assignallowed, description)
-  SELECT t.Task_Id taskid, s.Schedule_Id eventid, t.Task_Name taskname, t.Assign_Allowed assignallowed, t.Description description
+  Insert into tmp_task (taskid, eventid, taskname, assignallowed, assignedgroup, description)
+  SELECT t.Task_Id taskid, s.Schedule_Id eventid, t.Task_Name taskname, t.Assign_Allowed assignallowed, t.Assigned_Group assignedgroup, t.Description description
       FROM schedule s, task t
       WHERE s.Service_Id = communityid and s.Schedule_Id = t.Schedule_Id and t.Is_Deleted = 0;
 
-  SELECT distinct taskid, eventid, taskname, assignallowed, description from tmp_task order by eventid;
+  SELECT distinct taskid, eventid, taskname, assignallowed, assignedgroup, description from tmp_task order by eventid;
 
   -- assignment list
   SELECT t.Task_Id taskid, ta.User_Id userid, ta.Confirm confirm, t.Schedule_Id eventid
