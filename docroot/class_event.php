@@ -19,6 +19,7 @@ class Event Extends Resource
 		//$assignment = array();
 		
 		$eventid = $event_parms['eventid'];
+		$eventname = $event_parms['eventname'];
 		$description = $event_parms['desp'];
 		$startdatetime = $event_parms['startdatetime'];
 		$enddatetime = $event_parms['enddatetime'];
@@ -26,6 +27,7 @@ class Event Extends Resource
 		$tzid = $event_parms['tzid'];
 		$location = $event_parms['location'];
 		$host = $event_parms['host'];
+		$reventid =  $event_parms['reventid'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 	   
@@ -34,8 +36,8 @@ class Event Extends Resource
 			mysqli_autocommit($dbc, FALSE);
 			// Insert this schedule if no exists
 			$queryinsert = "INSERT INTO schedule ".
-								"(Schedule_Id,Service_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
-								" values('$eventid','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', '$location', '$host', ".
+								"(Schedule_Id,Schedule_Name,Service_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host, REvent_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+								" values('$eventid','$eventname','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', '$location', '$host', '$reventid',".
 								" '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(),'$ownerid')";
 			
 			$result = mysqli_query($dbc,$queryinsert);

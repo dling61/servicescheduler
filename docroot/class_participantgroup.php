@@ -50,37 +50,82 @@ class Participantgroup Extends Resource
 		mysqli_close($dbc);
 	}
 
-	Protected function update($memberid, $ownerid, $member_parms) {
-		$membername = $member_parms['membername'];
-		$email= $member_parms['email'];
-		$mobile = $member_parms['mobile'];
+	// Modify participant group name or add/remove participants from group
+	// 1.5 05/06/2015
+	Protected function update($partcipantgroupid, $pg_params) {
+		$ownerid = $pg_params['ownerid'];
+		$pgname= $pg_params['participantgroupname'];
+		$pg_add = $pg_params['add'];
+	    $pg_delete = $pg_params['delete'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM member WHERE Member_Id = '$memberid'";
+		$query = "SELECT * FROM participantgroup WHERE PGroup_Id = '$partcipantgroupid'";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data) == 1) {
-		    // Member exists and go ahead to update it
-		
-			$timestamp = date('Y-m-d H:i:s');
-			$queryupdate = "update member set ".
-						"Member_Name = '$membername', Member_Email = '$email', Mobile_Number = '$mobile', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-						" where Member_Id = '$memberid'";
-			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
-			if ($result !== TRUE) {
-				// if error, roll back transaction
-				header('HTTP/1.0 201 This member can not be updated', true, 201);
-				exit;
+		    // Participantgroup exists and go ahead to update it
+			try {
+				// start a transaction
+				mysqli_autocommit($dbc, FALSE);
+				// first to update group name
+				if ($pgname) {
+					$queryupdate = "update participantgroup set ".
+								"PGroup_Name = '$pgname', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+								" where PGroup_Id = '$partcipantgroupid'";
+					$result = mysqli_query($dbc,$queryupdate);
+					if ($result !== TRUE) {
+						throw new Exception(mysqli_error($dbc));
+					}
+				}
+				// second to add participants. It inserts multiple records in one query 
+				if ($pg_add) {
+					$queryupdate = 'INSERT INTO groupparticipant (PGroup_Id, User_Id, Is_Deleted, Creator_Id, Created_Time, Last_Modified, Last_Modified_Id)
+					              VALUES ';
+					$k = sizeof($pg_add);
+					foreach( $pg_add as $v ) {
+						 $queryupdate .= '(' .$partcipantgroupid. ',' .$v. ',0,' .$ownerid. ',UTC_TIMESTAMP(),UTC_TIMESTAMP(),' .$ownerid. ')';
+						 if ($k != 1) $queryupdate.= ', ';
+						 $k--;
+					}
+				
+					$result = mysqli_query($dbc,$queryupdate);
+					if ($result !== TRUE) {
+						throw new Exception(mysqli_error($dbc));
+					}
+				}
+				// delete some participants 
+				if ($pg_delete) {
+					
+					$queryupdate = 'update  groupparticipant set Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = ' .$ownerid. ' where '.
+							' PGroup_Id = ' .$partcipantgroupid. ' and User_Id in (';
+					$k = sizeof($pg_delete);
+					foreach( $pg_delete as $v ) {
+						 $queryupdate .= $v;
+						 if ($k != 1) $queryupdate.= ', ';
+						 $k--;
+					}
+					$queryupdate .= ')';
+					
+					$result = mysqli_query($dbc,$queryupdate);
+					if ($result !== TRUE) {
+						throw new Exception(mysqli_error($dbc));
+					}
+				}	
 			}
-			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
-			//echo json_encode($data2);
-			echo $data2;
-			
-			
+			catch (Exception $e) {
+				mysqli_rollback($dbc);
+				mysqli_autocommit($dbc, TRUE);
+				header('HTTP/1.0 202 Can not update participant group and its users', true, 201);
+			}
+			// commit to get everything done
+			mysqli_commit($dbc);
 		}
 		else {
 			header('HTTP/1.0 202 This member doesn\'t exist', true, 202);
 		}
+		
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+		echo $data2;
 		$data->close();
 		mysqli_close($dbc);
 	}
@@ -199,9 +244,11 @@ class Participantgroup Extends Resource
 		$this->insert($request->body_parameters['ownerid'], $parameters1);  
     }
 	
-	// method to update a member
-	// PUT http://servicescheduler.net/members/15433312
+	// method to do two things: 1. add or remove some participant 2. Modify group name
+	// 
+	// PUT http://servicescheduler.net/participantgroup/12345
 	public function put($request) {
+		/**
 		$parameters1 = array();
 			
 		if ($request->body_parameters['members']) {
@@ -209,10 +256,11 @@ class Participantgroup Extends Resource
 							$parameters1[$param_name] = $param_value;
 			}
 		}
-        $memberid = end($request->url_elements);
+		**/
+        $participantgroupid = end($request->url_elements);
 		reset($request->url_elements);
 		header('Content-Type: application/json; charset=utf8');
-		$this->update($memberid, $request->body_parameters['ownerid'], $parameters1);
+		$this->update($participantgroupid, $request->body_parameters);
     }
 	
 	/**
