@@ -448,6 +448,7 @@ class Community Extends Resource
 		$event_arr = array();
 		$task_arr = array();
 		$assignment_arr = array();
+		$final_event_arr = array();
 		
 		$mysql = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
@@ -484,6 +485,7 @@ class Community Extends Resource
 						   $one_arr['enddatetime'] = $row['enddatetime'];
 						   $one_arr['alert'] = $row['alert'];
 						   $one_arr['tzid'] = $row['tzid'];
+						   $one_arr['reventid'] = $row['reventid'];
 						   $one_arr['task'] = "";
 						   $event_arr[$i] = $one_arr;
 						   $i++;			   
@@ -508,6 +510,7 @@ class Community Extends Resource
 						$third_arr['taskid'] = $row['taskid'];
 						$third_arr['eventid'] = $row['eventid'];
 						$third_arr['userid'] = $row['userid'];
+						$third_arr['username'] = $row['username'];
 						$third_arr['confirm'] = $row['confirm'];
 					    $assignment_arr[$l] = $third_arr;
 						$l++;
@@ -530,9 +533,10 @@ class Community Extends Resource
 		$delevent_str = implode(",", $delevent_arr); // concatenate to the string seprating by ,
 		
 		// Construct a output jason object starting from event, task, and then assignment
-		foreach ($event_arr as &$svalue) {
+		foreach ($event_arr as $svalue) {
 			$eventid = $svalue['eventid'];
-			
+			$reventid = $svalue['reventid'];
+			// go down to task level
 			$task_temp = array();
 			$i = 0;
 			foreach ($task_arr as $mvalue) {
@@ -546,15 +550,16 @@ class Community Extends Resource
 					$task_temp_1['desp'] = $mvalue['desp'];
 					$task_temp_1['assignallowed'] = $mvalue['assignallowed'];
 					$task_temp_1['assignedgroup'] = $mvalue['assignedgroup'];
-					
+				
 					$assignment_temp = array();
 					$j = 0;
-					// add the assignment one by one  for one task
+					// go down to the task assignment level
 					foreach ($assignment_arr as $avalue) {
 						if ($avalue['taskid'] == $task_id) {
 							$assignment_temp_1 = array();
 							
 							$assignment_temp_1['userid'] = $avalue['userid'];
+							$assignment_temp_1['username'] = $avalue['username'];
 							$assignment_temp_1['confirm'] = $avalue['confirm'];
 							
 							$assignment_temp[$j] = $assignment_temp_1;
@@ -569,12 +574,26 @@ class Community Extends Resource
 			}
 			//insert task associated with the event into the event_arr TBD
 			$svalue['task'] = $task_temp;
-		}
+			
+			// insert into the final array
+			if (!$reventid or $reventid != 0 ) {
+				if (array_key_exists($reventid, $final_event_arr)) {
+					$c = count($final_event_arr[$reventid]);
+					$final_event_arr[$reventid][$c] = $svalue;
+				}
+				else 
+				    $final_event_arr[$reventid][0] = $svalue;
+			}
+			else {
+				$final_event_arr[$eventid][0] = $svalue;
+			}
+			
+		} // end of event loop
 		unset($svalue);
 		
 		// finally get this output
 		$return_arr['deletedevent'] = $delevent_arr;
-		$return_arr['event'] = $event_arr;
+		$return_arr['event'] = $final_event_arr;
          
 		$data2 = json_encode($return_arr);
 		echo $data2;
