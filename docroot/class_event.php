@@ -13,10 +13,10 @@ class Event Extends Resource
     }
 	protected $lastid;
 	
-	// create a new schedule
+	// create a new schedule and associated tasks
+	// 05/14/2015
 	Protected function insert($ownerid, $communityid, $event_parms) {
 	    $task = array();
-		//$assignment = array();
 		
 		$eventid = $event_parms['eventid'];
 		$eventname = $event_parms['eventname'];
@@ -83,6 +83,56 @@ class Event Extends Resource
 			mysqli_rollback($dbc);
 			mysqli_autocommit($dbc, TRUE);
 			header('HTTP/1.0 202 Can not create an event and its tasks', true, 202);
+		}
+		
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+		echo $data2;
+		//$data->close();
+		mysqli_close($dbc);
+	}
+	
+	// this is to insert a list of task 
+	// 05/14/2015
+	Protected function insert_task($ownerid, $eventid, $task_arr) {
+		
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+		try {
+			// start a transaction
+			mysqli_autocommit($dbc, FALSE);
+			// go ahead to insert tasks and assignment into schedule and taskassigned tables (API 1.5)
+			foreach($task_arr as $task) {
+				$taskid = $task['taskid'];
+				$desp =   $task['desp'];
+				$taskname = $task['taskname'];
+				$assignallowed = $task['assignallowed'];
+				$assignedgroupid = $task['assignedgroupid'];
+			  
+				$queryinsert1 = "insert into task ".
+						 "(Task_Id,Task_Name,Schedule_Id,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+						 "values('$taskid','$taskname','$eventid','$assignallowed','$assignedgroupid','$desp','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
+						
+				$result = mysqli_query($dbc,$queryinsert1);
+				if ($result !== TRUE) {
+					throw new Exception(mysqli_error($dbc));
+				}
+				
+				foreach($task['assignment'] as $assigned_id) {
+					// insert into the table "taskassigned"
+					$queryinsert2 = "insert into taskassigned".
+						"(Task_Id,User_Id,Schedule_Id,Confirm,Is_Deleted,Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+						 "values('$taskid','$assigned_id','$eventid','0','0','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
+						 
+					$result = mysqli_query($dbc,$queryinsert2);
+					if ($result !== TRUE) {
+						throw new Exception(mysqli_error($dbc));
+					}
+				}
+			}
+			mysqli_commit($dbc);	
+		} catch (Exception $e){
+			mysqli_rollback($dbc);
+			mysqli_autocommit($dbc, TRUE);
+			header('HTTP/1.0 202 Can not create a task and its assignment', true, 202);
 		}
 		
 		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
@@ -385,21 +435,29 @@ class Event Extends Resource
 		$this->pgetlastupdate($ownerid, $lastupdatetime);
     }
 
-	// This is the API to create a new event in the server  [04/23/2015]
-	// 1. POST http://[domain_name]/event
+	// This is the API 
+	// 1. to create a new event and possible tasks in the server  [04/23/2015]
+	//    POST http://[domain_name]/event
+	// 2. to create a task under an event
+	//    POST http://[domain_name]/event/1234/task
     public function post($request) {
 		$parameters1 = array();
+		header('Content-Type: application/json; charset=utf8');
 		
-		if ($request->body_parameters['event']) {
+		$lastElement = end($request->url_elements);
+		reset($request->url_elements);
+		if ($lastElement == "event") {
 			foreach($request->body_parameters['event'] as $param_name => $param_value) {
 				$parameters1[$param_name] = $param_value;				
 			}
+			// ADD tasks, process them to insert into the schedule table and task and assign task
+			$this->insert($request->body_parameters['ownerid'], $request->body_parameters['communityid'], $parameters1);
 		}
-		
-		header('Content-Type: application/json; charset=utf8');
-		// process them to insert into the schedule table and task and assign task
-		$this->insert($request->body_parameters['ownerid'], $request->body_parameters['communityid'], $parameters1);
-	    
+		else if ($lastElement == "task") {
+			$eventid  = $request->url_elements[count($request->url_elements)-2];
+			// ADD tasks, process them to insert into the task table and assign task
+			$this->insert_task($request->body_parameters['ownerid'],$eventid , $request->body_parameters['task']);
+		}   
     }
 	
 	// update a schedule with the schedule Id and update confirm status
