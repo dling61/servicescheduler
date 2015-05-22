@@ -485,6 +485,8 @@ class Community Extends Resource
 						   $one_arr['enddatetime'] = $row['enddatetime'];
 						   $one_arr['alert'] = $row['alert'];
 						   $one_arr['tzid'] = $row['tzid'];
+						   $one_arr['location'] = $row['location'];
+						   $one_arr['host']  = $row['host'];
 						   $one_arr['reventid'] = $row['reventid'];
 						   $one_arr['task'] = "";
 						   $event_arr[$i] = $one_arr;
@@ -499,7 +501,7 @@ class Community Extends Resource
 						$two_arr['taskname'] = $row['taskname'];
 						$two_arr['desp'] = $row['description'];
 						$two_arr['assignallowed'] = $row['assignallowed'];
-						$two_arr['assignedgroup'] = $row['assignedgroup'];
+						//$two_arr['assignedgroup'] = $row['assignedgroup'];
 					    $two_arr['assignment'] = "";
 						$task_arr[$k] = $two_arr;
 						$k++;
@@ -511,6 +513,7 @@ class Community Extends Resource
 						$third_arr['eventid'] = $row['eventid'];
 						$third_arr['userid'] = $row['userid'];
 						$third_arr['username'] = $row['username'];
+						$third_arr['userprofile'] = PROFILE_SERVER .$row['userprofile'];
 						$third_arr['confirm'] = $row['confirm'];
 					    $assignment_arr[$l] = $third_arr;
 						$l++;
@@ -549,17 +552,19 @@ class Community Extends Resource
 					$task_temp_1['taskname'] = $mvalue['taskname'];
 					$task_temp_1['desp'] = $mvalue['desp'];
 					$task_temp_1['assignallowed'] = $mvalue['assignallowed'];
-					$task_temp_1['assignedgroup'] = $mvalue['assignedgroup'];
+					//$task_temp_1['assignedgroup'] = $mvalue['assignedgroup'];
 				
 					$assignment_temp = array();
 					$j = 0;
 					// go down to the task assignment level
 					foreach ($assignment_arr as $avalue) {
-						if ($avalue['taskid'] == $task_id) {
+						// add eventid because the same taskid will be used for different events
+						if ($avalue['taskid'] == $task_id and $avalue['eventid'] == $eventid) {
 							$assignment_temp_1 = array();
 							
 							$assignment_temp_1['userid'] = $avalue['userid'];
 							$assignment_temp_1['username'] = $avalue['username'];
+							$assignment_temp_1['userprofile'] = $avalue['userprofile'];
 							$assignment_temp_1['confirm'] = $avalue['confirm'];
 							
 							$assignment_temp[$j] = $assignment_temp_1;
@@ -703,10 +708,11 @@ class Community Extends Resource
 		
 	}
 	
-	// GET method here is to handle 3 cases
+	// GET method here is to handle 4 cases
 	//  1. http://[REST_SERVER]/community/1234/participantgroup?ownerid=2222&lastupdatetime=121333000
 	//  2. http://[REST_SERVER]/community/1234/participant?ownerid=12434&lastupdatetime=121443232
 	//  3. http://[REST_SERVER]/community/1234/event?ownerid=11122@lastupdatetime=12121
+	//  4. http://[REST_SERVER]/community?ownerid=11122@lastupdatetime=12121
 	public function get($request) {
         $ownerid = $request->parameters['ownerid'];
 		$lastupdatetime = urldecode($request->parameters['lastupdatetime']);
@@ -723,9 +729,13 @@ class Community Extends Resource
 			// handle participant
 			$serviceid  = $request->url_elements[count($request->url_elements)-2];
 			$this->pgetlastupdate_sm($serviceid, $ownerid, $lastupdatetime);
-		} if ($lastElement == "event") {
+		} 
+		else if ($lastElement == "event") {
 			$communityid  = $request->url_elements[count($request->url_elements)-2];
 			$this->pgetlastupdate_sh($communityid, $lastupdatetime);
+		}
+		else if ($lastElement == "community") {
+			$this->pgetlastupdate($ownerid, $lastupdatetime);
 		}
     }
 

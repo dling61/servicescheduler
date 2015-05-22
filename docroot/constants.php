@@ -10,6 +10,8 @@
 	//define('REST_SERVER', 'appitest2.servicescheduler.net');
 	define('REST_SERVER', '127.0.0.1:8090');
 	define('FEEDBACK_EMAIL', 'ding.dongling@gmail.com');
+	// define a profile image directory
+	define ('PROFILE_SERVER', 'http://127.0.0.1/filesvc/');
 	
 	//Define our id-key pairs
 	$applications = array(

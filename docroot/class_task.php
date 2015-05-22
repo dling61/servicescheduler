@@ -11,6 +11,7 @@ class Task Extends Resource
         parent::__construct($request);
 		
     }
+	
 	protected $lastid;
 	// create a new schedule
 	Protected function insert($ownerid, $serviceid, $schedule_parms) {
@@ -245,65 +246,77 @@ class Task Extends Resource
 	}
 	
 	/**
-	    This method is for retrieving all schedules associated with the device owner assigned to it
-		This API is deprecated because sharedmember concept is used in 1.2.0
+	    This method is to retrieve assignment pool
+		05/20/2015 --- Client needs to make this call to get the assignment pool info after retrieving event info.
 	**/
-	Protected function pgetlastupdate($ownerid, $lastupdatetime) {
+	Protected function pgetlastupdate_ap($taskid, $ownerid, $lastupdatetime) {
 		$return_arr = array();
-		$delschedule_arr = array();
-		$schedules_arr = array();
-		$members_att = array();
+		$delpgroup_arr = array();
+		$delparticipant_arr = array();
+		$pgroup_arr = array();
+		$gparticipant_arr = array();
+		$participant_arr = array();
 		
-		// get the list of scheduleid and lastmodified
 		$mysql = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		
 		// call a stored procedure to get the schedules to be returned to caller
-		if ($mysql->multi_query("CALL getScheduleByLastUpdate('$ownerid', '$lastupdatetime')")) {
-	   
+		if ($mysql->multi_query("CALL getAssignmentPoolByLastUpdate('$taskid', '$lastupdatetime')")) {
           $h = 0;
-		  //loop through twp resultsets
+		  //loop through two result sets
           do {
             if ($result = $mysql->use_result())
             {
 			    $i = 0;
 				$j = 0;
 				$k = 0;
-                //Loop the two result sets, reading it into an array
+				$l = 0;
+				$m = 0;
+                //Loop the three result sets. First is Pgroup; second is the group member; third is individual participants
                 while ($row = $result->fetch_array(MYSQLI_ASSOC))
                 {
+					// first result set -- participant group
                     if ($h == 0) {
 					   // first resultset 
-						$isdeleted = $row['isdeleted'];
-						$odisdeleted = $row['odisdeleted'];
-						// if it's deleted, just add it to "deletedschedules"
-						if ($isdeleted == 1 || $odisdeleted == 1) {
-							$delschedule_arr[$j] = $row['scheduleid'];
+						$isdeleted = $row['pgisdeleted'];
+						// if it's deleted, just add it to "delpgroup"
+						if ($isdeleted == 1) {
+							$delpgroup_arr[$j] = $row['pgroupid'];
 							$j++;
 						}
 						else {
 						   $one_arr = array();
-						   $one_arr['scheduleid'] = $row['scheduleid'];
-						   $one_arr['serviceid'] = $row['serviceid'];
-						   $one_arr['desp'] = $row['description'];
-						   $one_arr['creatorid'] = $row['creatorid'];
-						   $one_arr['startdatetime'] = $row['starttime'];
-						   $one_arr['enddatetime'] = $row['endtime'];
-						   $one_arr['members'] = "";
-						   $one_arr['createdtime'] = $row['createdtime'];
-						   $one_arr['lastmodified'] = $row['lastmodified'];
-						   
-						   $schedules_arr[$i] = $one_arr;
+						   $one_arr['pgroupid'] = $row['pgroupid'];
+						   $one_arr['pgroupname'] = $row['pgroupname']; 
+						   $one_arr['member'] = "";
+						   $pgroup_arr[$i] = $one_arr;
 						   $i++;			   
 						}     
 					}
-					else {
-					   // second resultset 
+					else if ($h == 1) {
+					   // second resultset --- individual participants
 						$two_arr = array();
-						$two_arr['scheduleid'] = $row['scheduleid'];
-						$two_arr['memberid'] = $row['memberid'];
-						
-					    $members_att[$k] = $two_arr;
+						$two_arr['pgroupid'] = $row['pgroupid'];
+						$two_arr['userid'] = $row['userid'];
+						$two_arr['username'] = $row['username'];
+						$two_arr['userprofile'] = $row['userprofile'];
+						$gparticipant_arr[$k] = $two_arr;
 						$k++;
+					}
+					else  {
+					   // third resultset individual participants
+					   // check if a participant is deleted
+					   $isdeleted = $row['isdeleted'];
+					   if ($isdeleted == 1) {
+							$delparticipant_arr[$l] = $row['userud'];
+							$l++;
+					   }
+					   else {
+							$three_arr = array();
+							$three_arr['userid'] = $row['userid'];
+							$three_arr['username'] = $row['username'];
+							$three_arr['userprofile'] = $row['userprofile'];
+							$participant_arr[$m] = $three_arr;
+							$m++;
+					   }
 					}
                 } // while end
 				
@@ -316,38 +329,35 @@ class Task Extends Resource
         else
         {
             echo '<strong>Error Message ' . $mysql->error . '</strong></p>';
-        }
-		
+        }	
+        //Construct output json object
 	    //$delschedule_str = array();
-		//$delschedule_str = implode(",", $delschedule_arr); // concat to the string seprating by ,
-		
-		foreach ($schedules_arr as &$svalue) {
-			$scheduleid = $svalue['scheduleid'];
-			
+		//$delschedule_str = implode(",", $delpgroup_arr); // concat to the string seprating by 
+        $pgroup_final = array();		
+		foreach ($pgroup_arr as &$svalue) {
+			$pgroupid = $svalue['pgroupid'];
 			// get the list of memberid associated with the schedule ID
-			$members_str = '';
-			$i = 0;
-			foreach ($members_att as $mvalue) {
-			  if ($mvalue['scheduleid'] == $scheduleid) {
-				if($i==0)
-				{
-					$members_str.= $mvalue['memberid'];
+			$member_temp = array();
+			$j = 0;
+			foreach ($gparticipant_arr as $mvalue) {
+				$member_temp_1 = array();
+				if ($mvalue['pgroupid'] == $pgroupid) {
+					$member_temp_1['userid'] = $mvalue['userid'];
+					$member_temp_1['username'] = $mvalue['username'];
+					$member_temp_1['userprofile'] = PROFILE_SERVER .$mvalue['userprofile'];
+					$member_temp[$j] = $member_temp_1;
+					$j++;
 				}
-				else
-				{
-					$members_str .=",".$mvalue['memberid'];
-				}
-				$i++;
-			  }
 			}
-			//insert members associated with the schedule into the schedules_arr TBD
-			$svalue['members'] = $members_str;
+			//insert members associated with the schedule into the pgroup_arr TBD
+			$svalue['member'] = $member_temp;
 		}
 		unset($svalue);
 		
 	    //$return_arr['deletedschedules'] = $delschedule_str;
-		$return_arr['deletedschedules'] = $delschedule_arr;
-		$return_arr['schedules'] = $schedules_arr;
+		//$return_arr['deletedschedules'] = $delpgroup_arr;
+		$return_arr['apgroup'] = $pgroup_arr;
+		$return_arr['apparticipant'] = $participant_arr;
          
 		$data2 = json_encode($return_arr);
 		echo $data2;
@@ -358,17 +368,22 @@ class Task Extends Resource
      
 		mysqli_close($mysql);	
 	}
-	
 
-	/***
-	   Followings are the functions called from index.php
-	***/	
-    public function get($request) {   
+	// GET method here is to handle the case to retrieve all participants or participant groups assigned to a task
+	//  1. http://[REST_SERVER]/task/1234/assignmentpool?ownerid=2222&lastupdatetime=121333000
+
+	public function get($request) {
         $ownerid = $request->parameters['ownerid'];
 		$lastupdatetime = urldecode($request->parameters['lastupdatetime']);
-		
+	   
 		header('Content-Type: application/json; charset=utf8');
-		$this->pgetlastupdate($ownerid, $lastupdatetime);
+		$lastElement = end($request->url_elements);
+		reset($request->url_elements);
+		if ($lastElement == "assignmentpool") {
+			$taskid  = $request->url_elements[count($request->url_elements)-2];
+			$this->pgetlastupdate_ap($taskid, $ownerid, $lastupdatetime);
+		}
+	
     }
 
 	// This is the API to create a new schedule in the server

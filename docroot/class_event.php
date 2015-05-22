@@ -141,76 +141,61 @@ class Event Extends Resource
 		mysqli_close($dbc);
 	}
 	
-	// this is to update schedule and member assigment 
-	// 12/04/2013  dding  --- don't update the last_modified_id due to the lack of this information
-	// 06/22/2014  dding  --- add alert/Tz_Id
-	Protected function update($serviceid, $scheduleid, $ownerid, $schedule_parms) {
-		$members = array();													
+	// this is to update event only 
+	// This API doesn't update associated task
+	Protected function update($eventid, $ownerid, $event_parms) {	
 		
-		$description = $schedule_parms['desp'];
-		$startdatetime = $schedule_parms['startdatetime'];
-		$enddatetime = $schedule_parms['enddatetime'];
-		$alert = $schedule_parms['alert'];
-		$tzid = $schedule_parms['tzid'];
-		
+		$tablelist = array (
+		  "tzid" => "Tz_Id",
+		  "alert" => "Alert",
+		  "location" => "Location",
+		  "host" => "Host",
+		  "startdatetime" => "Start_DateTime",
+		  "enddatetime" => "End_DateTime",
+		  "eventname" => "Schedule_Name",
+		  "desp" => "Description"
+		  );
+		  
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$scheduleid'";
+		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$eventid'";
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
         if (mysqli_num_rows($data)==1) {
-		    // Serchdule exists and go ahead to update it
-			// two steps commit
-			mysqli_autocommit($dbc, FALSE);
+		    // event exists and go ahead to update it
+			$queryupdate = "UPDATE schedule SET";
+			$comma = " ";
+			foreach($event_parms as $key => $val) {
+				if( ! empty($val)) {
+					$val = mysqli_real_escape_string($dbc, $val);
+					$key = $tablelist[$key];
+					
+					if ($key == 'Start_DateTime' or $key == 'End_DateTime') {
+						//$queryupdate .= $comma . $key . " = " . "UNIX_TIMESTAMP(" .$val .")";
+						$queryupdate .= $comma . $key . " = " . "UNIX_TIMESTAMP(" ."'" .$val ."'" .")";
+					}
+					else  {
+						$queryupdate .= $comma . $key . " = '" . $val . "'";
+					}
+					$comma = ", ";
+				}
+			}
+			$queryupdate = $queryupdate . ", Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = " . $ownerid . " Where Schedule_Id = " .$eventid .";";
 		
-			$queryupdate = "update schedule set ".
-						"Service_Id = '$serviceid', Description = '$description', Start_DateTime = UNIX_TIMESTAMP('$startdatetime'), ".
-						" End_DateTime = UNIX_TIMESTAMP('$enddatetime'), Alert = '$alert', Tz_Id = '$tzid', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-						" where Schedule_Id = '$scheduleid'";
-			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
-			
-			if ($result !== TRUE) {
-				// if error, roll back transaction
-				mysqli_rollback($dbc);
-				header('HTTP/1.0 201 Failed to update', true, 201);
+			try {
+				$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
+			}
+			catch (exception $e) {
+				header('HTTP/1.0 204 updating event failed', true, 204);
 				exit;
 			}
-			else {
-				// first to delete the existing relationship
-				$querydelete = "delete FROM onduty WHERE Schedule_Id = '$scheduleid' and Service_Id = '$serviceid'";
-				
-				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
-				if ($result !== TRUE) {
-					// if error, roll back transaction
-					mysqli_rollback($dbc);
-					header('HTTP/1.0 201 Failed to delete the existing onduty', true, 201);
-					exit;
-				}
-				//go ahead to insert members in the onduty table
-				// 07/2014: Add confirmation in the onduty
-				if ($schedule_parms['members']) {
-					foreach($schedule_parms['members'] as $member) {
-					    $memberid = $member['memberid'];
-						$confirm = $member['confirm'];
-					  
-						$queryinsert1 = "insert into onduty".
-								 "(Service_Id, Schedule_Id,Member_Id,Confirm, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
-								 "values('$serviceid','$scheduleid','$memberid','$confirm','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
-						$result = mysqli_query($dbc,$queryinsert1);
-						if ($result !== TRUE) {
-							mysqli_rollback($dbc);
-							header('HTTP/1.0 202 Cannot insert into onduty', true, 203);
-							exit;
-						}
-					}
-				}
-			    mysqli_commit($dbc);
-				$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
-				echo $data2;
-			}		
+			
+			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+			echo $data2;		
 		}
 		else {
-			header('HTTP/1.0 202 This schedule doesn\'t exist', true, 202);
+			header('HTTP/1.0 202 This event doesn\'t exist', true, 202);
 		}
+		
 		$data->close();
 		mysqli_close($dbc);
 	}
@@ -460,33 +445,24 @@ class Event Extends Resource
 		}   
     }
 	
-	// update a schedule with the schedule Id and update confirm status
-	// 1. PUT http://[api_domain_name]/schedules/1234
-	// 2. PUT http://[api_domain_name]/schedules/1234/onduty/1111
+	// update an event that
+	// 1. PUT http://[api_domain_name]/event/1234
 	public function put($request) {
 		$parameters1 = array();
 		
 		header('Content-Type: application/json; charset=utf8');
-		$last2Element = $request->url_elements[count($request->url_elements)-2];
-		
-		if ($last2Element == "schedules") {
-			if ($request->body_parameters['schedules']) {
-				foreach($request->body_parameters['schedules'] as $param_name => $param_value) {
+		$last2Element = $request->url_elements[count($request->url_elements)-2];	
+		if ($last2Element == "event") {
+			if ($request->body_parameters['event']) {
+				foreach($request->body_parameters['event'] as $param_name => $param_value) {
 								$parameters1[$param_name] = $param_value;
 				}
 			}
-			// update a schedule
-			$scheduleid = end($request->url_elements);
+			// update an event
+			$eventid = end($request->url_elements);
 			reset($request->url_elements);
-			$this->update($request->body_parameters['serviceid'], $scheduleid, $request->body_parameters['ownerid'], $parameters1);
+			$this->update($eventid,$request->body_parameters['ownerid'], $parameters1);
 	    }
-		else if ($last2Element == "onduty") {
-			//get memberid and scheduleid
-			$memberid = end($request->url_elements);
-			reset($request->url_elements);
-			$scheduleid = $request->url_elements[count($request->url_elements)-3];
-			$this->update_confirm($scheduleid, $memberid, $request->body_parameters);
-		}	
     }
 	
 	/**
