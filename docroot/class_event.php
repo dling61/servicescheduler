@@ -445,8 +445,9 @@ class Event Extends Resource
 		}   
     }
 	
-	// update an event that
+	// update an event 
 	// 1. PUT http://[api_domain_name]/event/1234
+	// 05/25/2015 API 1.5
 	public function put($request) {
 		$parameters1 = array();
 		

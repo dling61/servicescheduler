@@ -78,120 +78,200 @@ class Task Extends Resource
 		mysqli_close($dbc);
 	}
 	
-	// this is to update schedule and member assigment 
-	// 12/04/2013  dding  --- don't update the last_modified_id due to the lack of this information
-	// 06/22/2014  dding  --- add alert/Tz_Id
-	Protected function update($serviceid, $scheduleid, $ownerid, $schedule_parms) {
-		$members = array();													
+	// this is to update tasks
+	// There are multiple tasks with the same task ID in the "task" table but with different schedule IDs
+	// It would update all tasks with the taskid supplied
+	// 05/25/2015 Dongling API 1.5
+	Protected function update_task($taskid, $task_arr) {
 		
-		$description = $schedule_parms['desp'];
-		$startdatetime = $schedule_parms['startdatetime'];
-		$enddatetime = $schedule_parms['enddatetime'];
-		$alert = $schedule_parms['alert'];
-		$tzid = $schedule_parms['tzid'];
+		$ownerid = $task_arr['ownerid'];
+		$taskname = $task_arr['taskname'];
+		$desp = $task_arr['desp'];
+		$assignallowed = $task_arr['assignallowed'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$scheduleid'";
-        $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
-        if (mysqli_num_rows($data)==1) {
-		    // Serchdule exists and go ahead to update it
-			// two steps commit
-			mysqli_autocommit($dbc, FALSE);
-		
-			$queryupdate = "update schedule set ".
-						"Service_Id = '$serviceid', Description = '$description', Start_DateTime = UNIX_TIMESTAMP('$startdatetime'), ".
-						" End_DateTime = UNIX_TIMESTAMP('$enddatetime'), Alert = '$alert', Tz_Id = '$tzid', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-						" where Schedule_Id = '$scheduleid'";
-			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
+		try {
+			// update the task table
+			$query2 = "Update task set Task_Name = '$taskname', Description = '$desp', Assign_Allowed = '$assignallowed', last_Modified = UTC_TIMESTAMP(), last_modified_id = '$ownerid' ".
+						" where Task_id = '$taskid' ";
+			$result1 = mysqli_query($dbc, $query2);
 			
-			if ($result !== TRUE) {
-				// if error, roll back transaction
-				mysqli_rollback($dbc);
-				header('HTTP/1.0 201 Failed to update', true, 201);
-				exit;
-			}
-			else {
-				// first to delete the existing relationship
-				$querydelete = "delete FROM onduty WHERE Schedule_Id = '$scheduleid' and Service_Id = '$serviceid'";
-				
-				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
-				if ($result !== TRUE) {
-					// if error, roll back transaction
-					mysqli_rollback($dbc);
-					header('HTTP/1.0 201 Failed to delete the existing onduty', true, 201);
-					exit;
-				}
-				//go ahead to insert members in the onduty table
-				// 07/2014: Add confirmation in the onduty
-				if ($schedule_parms['members']) {
-					foreach($schedule_parms['members'] as $member) {
-					    $memberid = $member['memberid'];
-						$confirm = $member['confirm'];
-					  
-						$queryinsert1 = "insert into onduty".
-								 "(Service_Id, Schedule_Id,Member_Id,Confirm, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
-								 "values('$serviceid','$scheduleid','$memberid','$confirm','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
-						$result = mysqli_query($dbc,$queryinsert1);
-						if ($result !== TRUE) {
-							mysqli_rollback($dbc);
-							header('HTTP/1.0 202 Cannot insert into onduty', true, 203);
-							exit;
-						}
-					}
-				}
-			    mysqli_commit($dbc);
-				$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
-				echo $data2;
-			}		
 		}
-		else {
-			header('HTTP/1.0 202 This schedule doesn\'t exist', true, 202);
+		catch (Exception $e) {
+			header('HTTP/1.0 201 Update failed', true, 202);		
 		}
-		$data->close();
+		
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+		echo $data2;
 		mysqli_close($dbc);
 	}
 	
 	//
-	//  This is to update the confirm status for a member
-	//  http://[domain name]/schedules/1234/onduty/1111
+	//  This is to update the assignment, add or delete participants
+	//  05/23/2015 Dongling API 1.5
 	//
-	Protected function update_confirm($scheduleid, $memberid, $schedule_parms) {
-		$ownerid = $schedule_parms['ownerid'];
-		$confirm = $schedule_parms['confirm'];
-	    
+	Protected function update_assignment($taskid, $eventid, $ownerid, $add_arr, $delete_arr) {    
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM onduty WHERE Member_id = '$memberid' and Is_Deleted = 0 and schedule_id = '$scheduleid' ";
-        $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
-        if (mysqli_num_rows($data)==1) {
-			// first to check if the ownerid is equal to the corresponding memberid
-			$query1 = "SELECT m.* FROM member m, user u where u.Email = m.Member_Email and u.User_ID = '$ownerid' and m.Member_id = '$memberid' ";
-			$result = mysqli_query($dbc, $query1);
+		try {
+			mysqli_autocommit($dbc, FALSE);
 		
-			if (mysqli_num_rows($result)==1) {
-				$query2 = "Update onduty set confirm = '$confirm', last_Modified = UTC_TIMESTAMP(), last_modified_id = '$ownerid' ".
-					" where Member_id = '$memberid' and schedule_id = '$scheduleid'";
-				$result1 = mysqli_query($dbc, $query2) or die("Error is: \n ".mysqli_error($dbc));
-			    
-				if ($result1 !== TRUE) {
-					// fail to update confirm
-					header('HTTP/1.0 201 Fail to update confirm on onduty', true, 203);
-					exit;
+			if ($add_arr != null) {
+				foreach($add_arr as $user) {
+					$query = "SELECT Is_Deleted isdeleted FROM taskassigned WHERE Task_Id = '$taskid' and User_Id = '$user' and Schedule_Id = '$eventid' ";
+					$data = mysqli_query($dbc, $query);
+					$result = mysqli_fetch_assoc($data);
+					if (mysqli_num_rows($data) == 1 and $result['isdeleted'] == 1) {
+						// One is deleted
+						$queryinsert1 = "update taskassigned ".
+										" SET Is_Deleted = 0, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+										" Where Task_Id = '$taskid' and User_Id = '$user' and Schedule_Id = '$eventid' ";
+					} else {
+						//insert each user into the table taskassignment
+						$queryinsert1 = "INSERT INTO taskassigned ".
+										"(Task_Id,User_Id,Schedule_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+										" values('$taskid','$user', '$eventid', '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";
+                    }	
+					$result = mysqli_query($dbc,$queryinsert1); 
+					if ($result !== TRUE) {
+							throw new Exception(mysqli_error($dbc));
+					}	
 				}
-			}
-			else {
-				header('HTTP/1.0 202 user does not allow to update confirm', true, 202);
-				exit;
-			}
+			};
+			
+			if ($delete_arr != null) {
+				foreach($delete_arr as $user) {
+					$query = "SELECT Is_Deleted isdeleted FROM taskassigned WHERE Task_Id = '$taskid' and User_Id = '$user' and Schedule_Id = '$eventid' ";
+					$data = mysqli_query($dbc, $query);
+					$result = mysqli_fetch_assoc($data);
+					if (mysqli_num_rows($data) == 1 and $result['isdeleted'] == 0) {
+						// One is deleted
+						$queryinsert2 = "UPDATE taskassigned SET Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+										" WHERE Task_Id = '$taskid' and User_Id = '$user' and Schedule_Id = '$eventid' ";
+					} 
+					$result = mysqli_query($dbc,$queryinsert2);
+					if ($result !== TRUE) {
+							throw new Exception(mysqli_error($dbc));
+					}	
+				}
+			};
+			// commit to get everything done
+			mysqli_commit($dbc);
 		}
-		else {
-			header('HTTP/1.0 202 This assignment doesn\'t exist', true, 201);
-			exit;
+		catch (Exception $e) {
+				mysqli_rollback($dbc);
+				mysqli_autocommit($dbc, TRUE);
+				header('HTTP/1.0 202 Can not update assignments', true, 202);
 		}
 		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
 		echo $data2;
-		$data->close();
+		//$data->close();
+		mysqli_close($dbc);
+	}
+	
+	//
+	//  This is to update the assignmentpool.
+	//  When adding a participant group, it needs to use "Gxxx"; when adding a participant, it needs to use "xxx".
+	//  05/23/2015 Dongling API 1.5
+	//
+	Protected function update_assignmentpool($taskid, $ownerid, $add_arr, $delete_arr) {    
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		
+		try {
+			mysqli_autocommit($dbc, FALSE);
+			$query = "";
+			$queryinsert1 = "";
+			$g = 0;
+			if ($add_arr != null) {
+				
+				foreach($add_arr as $user) {
+			        $g = 0;
+					if (substr($user, 0,1) == "G") {
+						$user = substr($user, 1);
+						$g = 1;
+			        }
+					
+					if ($g == 0) 
+						$query = "SELECT Is_Deleted isdeleted FROM assignmentpool WHERE Task_Id = '$taskid' and User_Id = '$user'";
+					else
+						$query = "SELECT Is_Deleted isdeleted FROM assignmentpool WHERE Task_Id = '$taskid' and PGroup_Id = '$user'";
+					
+					$data = mysqli_query($dbc, $query);
+					$result = mysqli_fetch_assoc($data);
+					if (mysqli_num_rows($data) == 1 and $result['isdeleted'] == 1) {
+						// One is deleted
+						if ($g == 0) {
+							$queryinsert1 = "update assignmentpool ".
+											" SET Is_Deleted = 0, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+											" Where Task_Id = '$taskid' and User_Id = '$user' and Schedule_Id = '$eventid' ";
+						} 
+						else {
+							$queryinsert1 = "update assignmentpool ".
+											" SET Is_Deleted = 0, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+											" Where Task_Id = '$taskid' and PGroup_Id = '$user' and Schedule_Id = '$eventid' ";
+						}
+					} else {
+						//insert each user into the table assignmentpool
+						if ($g == 0) {
+							$queryinsert1 = "INSERT INTO assignmentpool ".
+										"(Task_Id,User_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+										" values('$taskid','$user', '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";	
+						}
+						else
+							$queryinsert1 = "INSERT INTO assignmentpool ".
+											"(Task_Id,PGroup_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+											" values('$taskid','$user', '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";
+					}	
+					$result = mysqli_query($dbc,$queryinsert1); 
+					if ($result !== TRUE) {
+							throw new Exception(mysqli_error($dbc));
+					}	
+				}
+			};
+			
+			if ($delete_arr != null) {
+				foreach($delete_arr as $user) {
+					$g = 0;
+					if (substr($user, 0,1) == "G") {
+						$user = substr($user, 1);
+						$g = 1;
+			        }
+				
+					if ($g == 0) 
+						$query = "SELECT Is_Deleted isdeleted FROM assignmentpool WHERE Task_Id = '$taskid' and User_Id = '$user'";
+					else
+						$query = "SELECT Is_Deleted isdeleted FROM assignmentpool WHERE Task_Id = '$taskid' and PGroup_Id = '$user'";
+					
+					$data = mysqli_query($dbc, $query);
+					$result = mysqli_fetch_assoc($data);
+					if (mysqli_num_rows($data) == 1 and $result['isdeleted'] == 0) {
+						// One is deleted
+						if ($g == 0)
+							$queryinsert2 = "UPDATE assignmentpool SET Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+										" WHERE Task_Id = '$taskid' and User_Id = '$user' ";
+						else
+							$queryinsert2 = "UPDATE assignmentpool SET Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+										" WHERE Task_Id = '$taskid' and PGroup_Id = '$user' ";
+						
+						$result = mysqli_query($dbc,$queryinsert2);
+						if ($result !== TRUE) {
+							throw new Exception(mysqli_error($dbc));
+						}	
+					} 	
+				}
+			};
+			// commit to get everything done
+			mysqli_commit($dbc);
+		}
+		catch (Exception $e) {
+				mysqli_rollback($dbc);
+				mysqli_autocommit($dbc, TRUE);
+				header('HTTP/1.0 202 Can not update assignments', true, 202);
+		}
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+		echo $data2;
+		//$data->close();
 		mysqli_close($dbc);
 	}
 	
@@ -402,33 +482,41 @@ class Task Extends Resource
 	    
     }
 	
-	// update a schedule with the schedule Id and update confirm status
-	// 1. PUT http://[api_domain_name]/schedules/1234
-	// 2. PUT http://[api_domain_name]/schedules/1234/onduty/1111
+	// update the assignment associated with a task
+	// 1. PUT http://[api_domain_name]/task/1234/assignment
+	// 2. PUT http://[api_domain_name]/task/1234
+	// 05/20/2015 Dongling API 1.5
 	public function put($request) {
 		$parameters1 = array();
 		
 		header('Content-Type: application/json; charset=utf8');
+		$lastElement = end($request->url_elements);
 		$last2Element = $request->url_elements[count($request->url_elements)-2];
+		reset($request->url_elements);
 		
-		if ($last2Element == "schedules") {
-			if ($request->body_parameters['schedules']) {
-				foreach($request->body_parameters['schedules'] as $param_name => $param_value) {
-								$parameters1[$param_name] = $param_value;
-				}
-			}
-			// update a schedule
-			$scheduleid = end($request->url_elements);
-			reset($request->url_elements);
-			$this->update($request->body_parameters['serviceid'], $scheduleid, $request->body_parameters['ownerid'], $parameters1);
-	    }
-		else if ($last2Element == "onduty") {
-			//get memberid and scheduleid
-			$memberid = end($request->url_elements);
-			reset($request->url_elements);
-			$scheduleid = $request->url_elements[count($request->url_elements)-3];
-			$this->update_confirm($scheduleid, $memberid, $request->body_parameters);
-		}	
+		if ($lastElement == "assignment") {
+			$ownerid = $request->body_parameters['ownerid'];
+			$eventid = $request->body_parameters['eventid'];
+			$add_arr = $request->body_parameters['add'];
+			$delete_arr = $request->body_parameters['delete'];
+			
+			$taskid  = $request->url_elements[count($request->url_elements)-2];
+			$this->update_assignment($taskid, $eventid, $ownerid, $add_arr, $delete_arr);
+		}
+		else if ($lastElement == "assignmentpool") {
+			$ownerid = $request->body_parameters['ownerid'];
+			$add_arr = $request->body_parameters['add'];
+			$delete_arr = $request->body_parameters['delete'];
+			
+			$taskid  = $request->url_elements[count($request->url_elements)-2];
+			$this->update_assignmentpool($taskid, $ownerid, $add_arr, $delete_arr);
+		}
+		else if ($last2Element == "task") {
+			$task_arr = $request->body_parameters;
+			$taskid = $lastElement;
+			
+			$this->update_task($taskid, $task_arr);
+		}
     }
 	
 	/**
