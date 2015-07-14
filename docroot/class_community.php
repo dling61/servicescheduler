@@ -282,7 +282,7 @@ class Community Extends Resource
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 	
 		// call a stored procedure to get the services to be returned to caller
-		$query = "SELECT sm.Is_Deleted isdeleted, sm.User_Id userid, m.Email useremail, m.User_Name username, m.Mobile mobilenumber, ".
+		$query = "SELECT sm.Is_Deleted isdeleted, sm.User_Id userid, m.Email useremail, m.User_Name username, m.Mobile mobilenumber, m.Profile userprofile, ".
 		    " sm.Creator_Id creatorid, sm.Service_Id communityid, sm.Created_Time createdtime, sm.Last_Modified lastmodified, sm.User_Role userrole ".
  		    " FROM participant sm, user m ".
 			"where sm.User_Id = m.User_Id and sm.Service_Id = '$communityid' and ".
@@ -308,9 +308,10 @@ class Community Extends Resource
 			   else {
 				   $one_arr = array();
 				  
-				   $one_arr['userid'] = $row0['userid'];
-				   $one_arr['mail'] = $row0['useremail'];
+				   $one_arr['id'] = $row0['userid'];
+				   $one_arr['email'] = $row0['useremail'];
 				   $one_arr['name'] = $row0['username'];
+				   $one_arr['profile'] = PROFILE_SERVER.$row0['userprofile'];
 				   $one_arr['mobile'] = $row0['mobilenumber'];
 				   $one_arr['creatorid'] = $row0['creatorid'];
 				   $one_arr['communityid'] = $row0['communityid'];
@@ -324,7 +325,8 @@ class Community Extends Resource
 			   
 			} // while end
 		} // if end
-		$return_arr['deletedparticipant'] = $memberid_arr;
+		// TBD: remove the "deleted" since backbone can't handle this
+		//$return_arr['deletedparticipant'] = $memberid_arr;
 		$return_arr['participant'] = $members_arr;
          
 		$data2 = json_encode($return_arr);
@@ -651,6 +653,91 @@ class Community Extends Resource
 		mysqli_close($dbc);
 	}
 	
+	// This is to add a participant to a community (04/29/2015) --- this function is for Backbone code
+	// 06/21 to add a user to the user table as well as the participant table
+	// step #1:  add this user to the user table and return a userid
+	// step #2:  add this user to the participant table and return the user id to a caller
+	Protected function insert_participant_one($serviceid, $body_parms) {
+		$userid = "";
+		// default user role (regular)
+		$userrole = 1;
+		
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+		mysqli_select_db($dbc, DB_NAME);
+		
+		$email = $body_parms['email'];
+		$username = $body_parms['name'];
+		$mobile = $body_parms['mobile'];
+		$ownerid = $body_parms['ownerid'];
+		
+		$querysearch = "select User_Id from user where Email='$email'";
+		$data = mysqli_query($dbc,$querysearch);
+		
+		if(!isEmptyString($email)) {
+			if(mysqli_num_rows($data)==0){
+				// this user doesn't exist and go ahead
+				// turn off auto commit
+				mysqli_autocommit($dbc, FALSE);
+				try {
+					// 1. invite a participant ---- first transaction
+					$queryinsert = "insert into user(Email,User_Name,Password,User_Type, Mobile,Profile, Verified, Active, Created_Time, Last_Modified)
+									 values('$email','$username','','','$mobile','default-profile-pic.png',0, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())"; 
+					
+					mysqli_query($dbc,$queryinsert)or die("Error is: \n ".mysqli_error($dbc));		
+					$data2 = mysqli_query($dbc,$querysearch);			
+					$row = mysqli_fetch_array($data2);
+					$userid = $row['User_Id'];
+					
+					// logserver if debug flag is set to 1
+					if (DEBUG_FLAG == 1)
+							logserveronce("Register","POST", $email, "");
+					$data2->close();
+					// 2. add it to the participant
+					$query = "SELECT Is_Deleted isdeleted FROM participant WHERE Service_Id = '$serviceid' and User_Id = '$userid' LIMIT 1";
+					$data = mysqli_query($dbc, $query) or die(mysqli_error());
+					$result = mysqli_fetch_assoc($data);
+					if (mysqli_num_rows($data)== 1 and $result['isdeleted'] == 0) {
+						header('HTTP/1.0 201 This shared member exists already', true, 201);
+						echo json_encode(array('code'=> 201, 'message' => 'This participant exists'));
+					}
+					else {
+						if (mysqli_num_rows($data)== 0) {
+							$queryinsert1 = "insert into participant".
+									 " (Service_Id, User_Id, User_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
+									 "values('$serviceid','$userid', '$userrole',0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
+						}
+						else if ($result['isdeleted'] == 1) {
+							$queryinsert1 = "update participant ".
+									 " set Is_Deleted = 0, User_Role = '$userrole', Last_Modified_Id = '$ownerid', Last_Modified = UTC_TIMESTAMP ".
+									 " where Service_Id = '$serviceid' and Member_Id = '$userid' ";
+						}
+						$result = mysqli_query($dbc,$queryinsert1);
+						echo json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time()), 'id' => $userid));			
+					}	
+				} 
+				catch (exception $e) {
+					mysqli_rollback($dbc);
+					mysqli_autocommit($dbc, TRUE);
+					header('HTTP/1.0 203 failed to inert shared members', true, 203);
+				}	
+			}
+			else {
+				// there is already registered
+				header('X-PHP-Response-Code: 201', true, 201);
+				echo json_encode(array('error message'=>'This user is already existing'));
+			}
+		}
+		else {
+			// empty or null for one of user name, password and email
+			header('X-PHP-Response-Code: 202', true, 202);
+			echo json_encode(array('error message'=>'empty or null value for one of user name, password and or email'));
+		}
+				
+		mysqli_free_result($data);
+		mysqli_close($dbc);
+	}
+	
+	
 	// This is to add a participant group to a community (04/29/2015)
 	Protected function insert_participantgroup($ownerid, $serviceid, $body_param) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
@@ -743,6 +830,7 @@ class Community Extends Resource
 	//   1. POST http://servicescheduler.net/community
 	//   2. POST http://servicescheduler.net/community/1234/participant
 	//   3. POST http://[domain name]/community/1234/participantgroup
+	//   4. POST http://servicescheduler.net/community/1234/participantone
     public function post($request) {
 		$parameters1 = array();
         
@@ -770,6 +858,11 @@ class Community Extends Resource
 			}
 			 //participant group method
 			$this->insert_participantgroup($request->body_parameters['ownerid'], $serviceid, $parameters1);
+		} if ($lastElement == "participantone") {
+			$serviceid  = $request->url_elements[count($request->url_elements)-2];
+			 //participant method
+			$this->insert_participant_one($serviceid, $request->body_parameters);
+		
 		}
 		
     }
