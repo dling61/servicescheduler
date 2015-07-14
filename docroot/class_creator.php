@@ -330,6 +330,45 @@ class Creator Extends Resource
 		mysqli_close($dbc);
 	}
 	
+	// this is to handle image upload_image
+	// It needs to handle the image saving and resize
+	// 06/26/2015 
+	Protected function upload_image($body_parms) {
+		//$allow = array("jpg", "jpeg", "gif", "png");
+		$ownerid = $body_parms['ownerid'];
+		$extension = $body_parms['extension'];
+		$imagedata = $body_parms['data'];
+		$data = base64_decode($imagedata);
+        
+		$im = imagecreatefromstring($data);
+		if ($im !== false) {
+			// $file_location = 'c:\localweb' . '\\';
+			$fileName = FILE_LOCATION . $ownerid . '.' . $extension;
+		    //imagepng($im, FILE_LOCATION . $ownerid . '.' . $extension, 0, NULL);
+			//$tmpFile = FILE_LOCATION . $ownerid;
+			imagepng($im, $fileName, 0, NULL);
+			// frees image from memory
+			imagedestroy($im);
+			/** We will resize the image on client side using javaScript
+			list($width, $height) = getimagesize($tmpFile);
+			if ($width == null && $height == null) {
+				header('X-PHP-Response-Code: 202', true, 202);
+				echo json_encode(array('error message'=>'Image is not valid'));
+				return;
+			}
+			// resize if necessary
+			if ($width >= 60 && $height >= 61) {
+				$image = new Imagick($tmpFile);
+				$image->thumbnailImage(60, 61);
+				$image->writeImage($fileName);
+			}
+			else {
+				move_uploaded_file($tmpFile, $fileName);
+			}
+			***/
+		}		
+	}
+	
 	// this is to retrieve the latest service/member/schedule IDs from the server
 	// 05/07/2015
 	Protected function pgetlastId($ownerid) {
@@ -373,10 +412,7 @@ class Creator Extends Resource
 	// this is to retrieve a user
 	Protected function pgetUser($ownerid, $email, $username, $mobile) {
 	    
-		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
-		 
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-	
         $query = "select User_Id userid, User_Name username, Email email, Mobile mobile FROM user u";
 		
 		if ($email) {
@@ -417,9 +453,7 @@ class Creator Extends Resource
 		else {
 			// No match in the user table
 			header('HTTP/1.0 401 user not found', true, 401);
-		}
-		
-				
+		}		
 		$data->close();
 		mysqli_close($dbc);
 	}
@@ -447,7 +481,7 @@ class Creator Extends Resource
 		}
     }
 
-	// This is the API to register a user in the servre and login in
+	// This is the API to register a user in the serve and login in and more ....
     public function post($request) {
 		header('Content-Type: application/json; charset=utf8');
 	    if ($request->parameters['action'] == 'register') {
@@ -468,6 +502,9 @@ class Creator Extends Resource
 		else if ($request->parameters['action'] == 'invite') {
 		    $this->invite($request->body_parameters);
 		} 
+		else if ($request->parameters['action'] == 'upload'){
+			$this->upload_image($request->body_parameters);
+		}
     }
 
 }
