@@ -15,10 +15,11 @@ class Community Extends Resource
 	//protected $lastid;
 	
 	// create a new service and insert the creator to the participant table
-	Protected function insert($ownerid, $community_parms) {
+	// 7/17/2015 --- Change the request body to one list of elements
+	Protected function insert($community_parms) {
 	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
-		 
+		$ownerid = $community_parms['ownerid'];
 		$communityid = $community_parms['communityid'];
 		$communityname = $community_parms['communityname'];
 		$description = $community_parms['desp'];
@@ -53,7 +54,9 @@ class Community Extends Resource
 		mysqli_close($dbc);
 	}
 
-	Protected function update($communityid, $ownerid, $community_parms) {
+	// 07/18/2015 Change the request body to one list of elements
+	Protected function update($communityid, $community_parms) {
+		$ownerid = $community_parms['ownerid'];
 		$communityname = $community_parms['communityname'];
 		$description= $community_parms['desp'];
 		
@@ -839,12 +842,15 @@ class Community Extends Resource
 		$lastElement = end($request->url_elements);
 		reset($request->url_elements);
 		if ($lastElement == "community") {
+			/**
 			if ($request->body_parameters['community']) {
 				foreach($request->body_parameters['community'] as $param_name => $param_value) {
 							$parameters1[$param_name] = $param_value;
 				}
 			}
 			$this->insert($request->body_parameters['ownerid'], $parameters1);
+			**/
+			$this->insert($request->body_parameters);
 		} else if ($lastElement == "participant") {
 		    $serviceid  = $request->url_elements[count($request->url_elements)-2];
 			 //participant method
@@ -877,16 +883,17 @@ class Community Extends Resource
 		$last2Element = $request->url_elements[count($request->url_elements)-2];
 		
 		if ($last2Element == "community") {
+			/**
 			if ($request->body_parameters['community']) {
 				foreach($request->body_parameters['community'] as $param_name => $param_value) {
 								$parameters1[$param_name] = $param_value;
 				}
 			}
-			
+			***/
 			//handle different resources
 			$communityid = end($request->url_elements);
 			reset($request->url_elements);
-			$this->update($communityid, $request->body_parameters['ownerid'], $parameters1);
+			$this->update($communityid, $request->body_parameters);
 	    }
 		else if ($last2Element == "participant") {
 			//get userid and communityid 

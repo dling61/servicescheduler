@@ -424,6 +424,10 @@ class Creator Extends Resource
 		else if($mobile)	{
 			$query = $query." where u.Mobile = '$mobile'";
 		}
+		else {
+			header('HTTP/1.0 402 No input value is provided', true, 402);
+			return;
+		}
 	   
 		$data = mysqli_query($dbc, $query);
 		
@@ -435,7 +439,7 @@ class Creator Extends Resource
 			
 			while($row0 = mysqli_fetch_array($data)){
 				   $one_arr = array();
-				   $one_arr['userid'] = $row0['userid'];
+				   $one_arr['id'] = $row0['userid'];
 				   $one_arr['username'] = $row0['username'];
 				   $one_arr['email'] = $row0['email'];
 				   $one_arr['mobile'] = $row0['mobile'];
@@ -448,7 +452,7 @@ class Creator Extends Resource
 			echo $data2;
 			
 			if (DEBUG_FLAG == 1)
-					logserveronce("GETLASTID","GET", $ownerid, $data2);
+					logserveronce("Search","GET", $ownerid, $data2);
 	    }
 		else {
 			// No match in the user table
