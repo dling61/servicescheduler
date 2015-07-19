@@ -447,7 +447,7 @@ class Creator Extends Resource
 				   $user_arr[$i] = $one_arr;
 				   $i++;			   
 			}   
-			$return_arr['user'] = $user_arr;
+			$return_arr = $user_arr;
 			$data2 = json_encode($return_arr);
 			echo $data2;
 			
