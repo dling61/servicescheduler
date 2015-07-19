@@ -250,7 +250,7 @@ class Community Extends Resource
 			   }
 			   else {
 				   $one_arr = array();
-				   $one_arr['communityid'] = $row0['serviceid'];
+				   $one_arr['id'] = $row0['serviceid'];
 				   $one_arr['communityname'] = $row0['servicename'];
 				   $one_arr['desp'] = $row0['descp'];
 				   $one_arr['creatorid'] = $row0['creatorid'];
@@ -264,10 +264,10 @@ class Community Extends Resource
 			   
 			} // while end
 		} // if end
-		$return_arr['deletedcmty'] = $serviceid_arr;
-		$return_arr['community'] = $services_arr;
+		//$return_arr['deletedcmty'] = $serviceid_arr;
+		//$return_arr['community'] = $services_arr;
          
-		$data2 = json_encode($return_arr);
+		$data2 = json_encode($services_arr);
 		echo $data2;
       
 	    // logserver if debug flag is set to 1
@@ -330,9 +330,9 @@ class Community Extends Resource
 		} // if end
 		// TBD: remove the "deleted" since backbone can't handle this
 		//$return_arr['deletedparticipant'] = $memberid_arr;
-		$return_arr['participant'] = $members_arr;
-         
-		$data2 = json_encode($return_arr);
+		//$return_arr['participant'] = $members_arr;
+        //$data2 = json_encode($return_arr);
+		$data2 = json_encode($members_arr);
 		echo $data2;
 		
 		// logserver if debug flag is set to 1
