@@ -639,7 +639,7 @@ class Community Extends Resource
 			else if ($result['isdeleted'] == 1) {
 				$queryinsert1 = "update participant ".
 						 " set Is_Deleted = 0, User_Role = '$userrole', Last_Modified_Id = '$ownerid', Last_Modified = UTC_TIMESTAMP ".
-						 " where Service_Id = '$serviceid' and Member_Id = '$userid' ";
+						 " where Service_Id = '$serviceid' and User_Id = '$userid' ";
 			}
 			$result = mysqli_query($dbc,$queryinsert1);
 			if ($result !== TRUE) {
