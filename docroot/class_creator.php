@@ -294,8 +294,8 @@ class Creator Extends Resource
 			//invite a participant
 			if(mysqli_num_rows($data)==0){
 			
-				$queryinsert = "insert into user(Email,User_Name,Password,User_Type, Mobile,Verified, Active, Created_Time, Last_Modified)
-								 values('$email','$username','','','$mobile',0, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())"; 
+				$queryinsert = "insert into user(Email,User_Name,Password,User_Type, Mobile, Profile, Verified, Active, Created_Time, Last_Modified)
+								 values('$email','$username','','','$mobile','default-profile-pic.png',0, 0, UTC_TIMESTAMP(), UTC_TIMESTAMP())"; 
 				
 				mysqli_query($dbc,$queryinsert)or die("Error is: \n ".mysqli_error($dbc));		
 				
@@ -486,8 +486,11 @@ class Creator Extends Resource
     }
 
 	// This is the API to register a user in the serve and login in and more ....
+	// 07/23/2015 changed action parameter to the last element of URL to accommodate backbone.js  
+	// /creator/register; /creator/signin; ......
     public function post($request) {
 		header('Content-Type: application/json; charset=utf8');
+		/**
 	    if ($request->parameters['action'] == 'register') {
 			$this->register($request->body_parameters);
 		}
@@ -507,6 +510,31 @@ class Creator Extends Resource
 		    $this->invite($request->body_parameters);
 		} 
 		else if ($request->parameters['action'] == 'upload'){
+			$this->upload_image($request->body_parameters);
+		}
+		***/
+		
+		$lastElement = end($request->url_elements);
+		reset($request->url_elements);
+		if ($lastElement == 'register') {
+			$this->register($request->body_parameters);
+		}
+		else if ($lastElement == 'signin') {
+		    $this->signin($request->body_parameters);
+		} 
+		else if ($lastElement == 'resetpw') {
+		    $this->resetpw($request->body_parameters);
+		} 
+		else if ($lastElement == 'settoken') {
+		    $this->settoken($request->body_parameters);
+		} 
+		else if ($lastElement == 'setpassword') {
+		    $this->setpassword($request->body_parameters);
+		} 
+		else if ($lastElement == 'invite') {
+		    $this->invite($request->body_parameters);
+		} 
+		else if ($lastElement == 'upload'){
 			$this->upload_image($request->body_parameters);
 		}
     }
