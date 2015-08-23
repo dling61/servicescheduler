@@ -413,7 +413,7 @@ class Creator Extends Resource
 	Protected function pgetUser($ownerid, $email, $username, $mobile) {
 	    
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-        $query = "select User_Id userid, User_Name username, Email email, Mobile mobile FROM user u";
+        $query = "select User_Id userid, User_Name username, Email email, Mobile mobile, Profile profile FROM user u";
 		
 		if ($email) {
 			$query = $query." where u.Email = '$email'";
@@ -443,7 +443,7 @@ class Creator Extends Resource
 				   $one_arr['username'] = $row0['username'];
 				   $one_arr['email'] = $row0['email'];
 				   $one_arr['mobile'] = $row0['mobile'];
-				   
+				   $one_arr['profile'] = PROFILE_SERVER.$row0['profile'];
 				   $user_arr[$i] = $one_arr;
 				   $i++;			   
 			}   
@@ -458,6 +458,38 @@ class Creator Extends Resource
 			// No match in the user table
 			header('HTTP/1.0 401 user not found', true, 401);
 		}		
+		$data->close();
+		mysqli_close($dbc);
+	}
+	
+	// update creator's profile 
+	// 08/06/2015  
+	Protected function update($userid, $creator_parms) {
+		$ownerid = $creator_parms['ownerid'];
+		$username = $creator_parms['username'];
+		$mobile= $creator_parms['mobile'];
+		
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		$query = "SELECT * FROM user WHERE User_Id = '$userid'";
+        $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
+	
+        if (mysqli_num_rows($data)==1) {
+		    // user exists and go ahead to update it
+			$queryupdate = "update user set ".
+						"User_Name = '$username', Mobile = '$mobile', Last_Modified = UTC_TIMESTAMP(),Last_Modified_Id = '$ownerid' ".
+						"where User_Id = '$userid'";
+			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
+			if ($result !== TRUE) {
+				// if error, roll back transaction
+				header('HTTP/1.0 201 This user can not be updated', true, 201);
+				exit;
+			}
+			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+			echo $data2;	
+		}
+		else {
+			header('HTTP/1.0 202 This member doesn\'t exist', true, 202);
+		}
 		$data->close();
 		mysqli_close($dbc);
 	}
@@ -539,5 +571,23 @@ class Creator Extends Resource
 		}
     }
 
+	// this the cases to handle the following cases
+	// 1. PUT http://[domain name]/creator/1234   - update the user name and/or mobile
+	public function put($request) {
+		header('Content-Type: application/json; charset=utf8');
+		$lastElement = end($request->url_elements);
+		$last2Element = $request->url_elements[count($request->url_elements)-2];
+		reset($request->url_elements);
+		
+		if ($last2Element == "creator") {
+			//this is the case #1
+			$userid = end($request->url_elements);
+			reset($request->url_elements);
+			$this->update($userid, $request->body_parameters);
+	    }
+		
+		
+		
+	}
 }
 ?>
