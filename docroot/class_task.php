@@ -107,6 +107,88 @@ class Task Extends Resource
 		mysqli_close($dbc);
 	}
 	
+	// this is to support patch update 
+	// There are multiple tasks with the same task ID in the "task" table but with different schedule IDs
+	// It would update all tasks with the taskid supplied
+	// 05/25/2015 Dongling API 1.5
+	Protected function partial_update_task($taskid, $task_arr) {
+		// table for task
+		$taska = array(
+			'taskname' => 'Task_Name',
+			'desp' => 'Description',
+			'assignallowed' => 'Assign_Allowed'
+		);
+	
+		$ownerid = $task_arr['ownerid'];
+		//$taskname = $task_arr['taskname'];
+		//$desp = $task_arr['desp'];
+		//$assignallowed = $task_arr['assignallowed'];
+        $data = array();		
+        foreach($task_arr as $key => $value) {
+			foreach($taska as $keya => $valuea) {
+				if ($key == $keya) {
+					$data[$valuea] = $value;
+					break;
+				}
+			}
+		}
+		$where = "Task_Id = '$taskid' ";
+		$table = "task";
+		
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		
+		try {
+			// update the task table
+			$query2 = build_sql_update($table, $data, $where, $ownerid);
+			//$query2 = "Update task set Task_Name = '$taskname', Description = '$desp', Assign_Allowed = '$assignallowed', last_Modified = UTC_TIMESTAMP(), last_modified_id = '$ownerid' ".
+						" where Task_id = '$taskid' ";
+			$result1 = mysqli_query($dbc, $query2);
+			
+		}
+		catch (Exception $e) {
+			header('HTTP/1.0 201 Update failed', true, 202);		
+		}
+		
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+		echo $data2;
+		mysqli_close($dbc);
+	}
+	
+	// This is to add participant to task
+	// 07/24/2015
+	Protected function add_assignment($taskid, $ownerid, $userid, $eventid){  
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		
+		try {
+			$query = "SELECT Is_Deleted isdeleted FROM taskassigned WHERE Task_Id = '$taskid' and User_Id = '$userid' and Schedule_Id = '$eventid' ";
+			$data = mysqli_query($dbc, $query);
+			$result = mysqli_fetch_assoc($data);
+			if (mysqli_num_rows($data) == 1) {
+				// One is deleted
+				$queryinsert1 = "update taskassigned ".
+								" SET Is_Deleted = 0, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
+								" Where Task_Id = '$taskid' and User_Id = '$userid' and Schedule_Id = '$eventid' ";
+			} else {
+				//insert each user into the table taskassignment
+				$queryinsert1 = "INSERT INTO taskassigned ".
+								"(Task_Id,User_Id,Schedule_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+								" values('$taskid','$userid', '$eventid', '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";
+			}	
+			$result = mysqli_query($dbc,$queryinsert1); 
+			if ($result !== TRUE) {
+					throw new Exception(mysqli_error($dbc));
+			}	
+		}
+		catch (Exception $e) {
+				header('HTTP/1.0 202 Can not add participant to the task', true, 201);
+		}
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+		echo $data2;
+		mysqli_close($dbc);
+		
+    }	
+	
+	
 	//
 	//  This is to update the assignment, add or delete participants
 	//  05/23/2015 Dongling API 1.5
@@ -149,11 +231,12 @@ class Task Extends Resource
 						// One is deleted
 						$queryinsert2 = "UPDATE taskassigned SET Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 										" WHERE Task_Id = '$taskid' and User_Id = '$user' and Schedule_Id = '$eventid' ";
-					} 
-					$result = mysqli_query($dbc,$queryinsert2);
-					if ($result !== TRUE) {
-							throw new Exception(mysqli_error($dbc));
-					}	
+					 
+						$result = mysqli_query($dbc,$queryinsert2);
+						if ($result !== TRUE) {
+								throw new Exception(mysqli_error($dbc));
+						}
+					}
 				}
 			};
 			// commit to get everything done
@@ -466,25 +549,47 @@ class Task Extends Resource
 	
     }
 
-	// This is the API to create a new schedule in the server
+	// Assign a participant to the task
+	// 1. POST http://[api_domain_name]/task/1234/assignment
     public function post($request) {
 		$parameters1 = array();
 		
-		if ($request->body_parameters['schedules']) {
-			foreach($request->body_parameters['schedules'] as $param_name => $param_value) {
-				$parameters1[$param_name] = $param_value;				
-			}
-		}
+		header('Content-Type: application/json; charset=utf8');
+		$lastElement = end($request->url_elements);
+		$last2Element = $request->url_elements[count($request->url_elements)-2];
+		reset($request->url_elements);
+		
+		if ($lastElement == "assignment") {
+			$ownerid = $request->body_parameters['ownerid'];
+			$userid = $request->body_parameters['id'];
+			$eventid = $request->body_parameters['eventid'];
+			
+			$taskid  = $request->url_elements[count($request->url_elements)-2];
+			$this->add_assignment($taskid, $ownerid, $userid, $eventid);
+		} 
+    }
+	
+	// partially update task
+	// 08/26/2015
+	public function patch($request) {
+		$parameters1 = array();
 		
 		header('Content-Type: application/json; charset=utf8');
-		// process them to insert into the schedule table and onDuty
-		$this->insert($request->body_parameters['ownerid'], $request->body_parameters['serviceid'], $parameters1);
-	    
-    }
+		$lastElement = end($request->url_elements);
+		$last2Element = $request->url_elements[count($request->url_elements)-2];
+		reset($request->url_elements);
+		
+		if ($last2Element == "task") {
+			$task_arr = $request->body_parameters;
+			$taskid = $lastElement;
+			$this->partial_update_task($taskid, $task_arr);
+		}	
+	}
 	
 	// update the assignment associated with a task
 	// 1. PUT http://[api_domain_name]/task/1234/assignment
 	// 2. PUT http://[api_domain_name]/task/1234
+	// 3. PUT http://[api_domain_name]/task/1234/assignmentpool
 	// 05/20/2015 Dongling API 1.5
 	public function put($request) {
 		$parameters1 = array();
@@ -495,6 +600,7 @@ class Task Extends Resource
 		reset($request->url_elements);
 		
 		if ($lastElement == "assignment") {
+			/*** This is to add more than participant or delete more than participant
 			$ownerid = $request->body_parameters['ownerid'];
 			$eventid = $request->body_parameters['eventid'];
 			$add_arr = $request->body_parameters['add'];
@@ -502,6 +608,13 @@ class Task Extends Resource
 			
 			$taskid  = $request->url_elements[count($request->url_elements)-2];
 			$this->update_assignment($taskid, $eventid, $ownerid, $add_arr, $delete_arr);
+			****/
+			$ownerid = $request->body_parameters['ownerid'];
+			$userid = $request->body_parameters['id'];
+			$eventid = $request->body_parameters['eventid'];
+			
+			$taskid  = $request->url_elements[count($request->url_elements)-2];
+			$this->add_assignment($taskid, $ownerid, $userid, $eventid);
 		}
 		else if ($lastElement == "assignmentpool") {
 			$ownerid = $request->body_parameters['ownerid'];
@@ -519,12 +632,36 @@ class Task Extends Resource
 		}
     }
 	
-	/**
-	   There is a body element "ownerid" in the DELETE HTTP Method 
-	**/
+	// Delete a task or remove a participant from a task
+	// 1. DELETE http://[api_domain_name]/task/1234/assignment
+	// 2. Delete http://[api_domain_name]/task/1234
+	// 07/24/2015 Dongling API 1.5   TBD
 	public function delete($request) {
-	     // logic to handle an HTTP DELETE request goes here
+		/**
+	    $parameters1 = array();
+		
 		header('Content-Type: application/json; charset=utf8');
+		$lastElement = end($request->url_elements);
+		$last2Element = $request->url_elements[count($request->url_elements)-2];
+		reset($request->url_elements);
+		
+		if ($lastElement == "assignment") {
+			$ownerid = $request->body_parameters['ownerid'];
+			$eventid = $request->body_parameters['eventid'];
+			$add_arr = $request->body_parameters['add'];
+			$delete_arr = $request->body_parameters['delete'];
+			
+			$taskid  = $request->url_elements[count($request->url_elements)-2];
+			$this->update_assignment($taskid, $eventid, $ownerid, $add_arr, $delete_arr);
+		}
+		else if ($last2Element == "task") {
+			$task_arr = $request->body_parameters;
+			$taskid = $lastElement;
+			
+			$this->update_task($taskid, $task_arr);
+		}
+		***/
+		
 		$scheduleid = end($request->url_elements);
 		reset($request->url_elements);
 		$ownerid = $request->parameters['ownerid'];
