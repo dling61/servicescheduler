@@ -1,7 +1,7 @@
 <?php
 abstract class Resource
 {
-    protected static $httpMethods = array("GET", "POST", "HEAD","PUT", "OPTIONS", "DELETE", "TRACE", "CONNECT");
+    protected static $httpMethods = array("GET", "POST", "HEAD","PUT", "OPTIONS", "DELETE", "TRACE", "CONNECT", "PATCH");
 
 	protected $version;
 	protected $lastid;
