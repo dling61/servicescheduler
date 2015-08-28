@@ -7,6 +7,17 @@ function isEmptyString($data)
         return (trim($data) == "" or $data == null);
 }
 
+/* function to build SQL UPDATE string */
+function build_sql_update($table, $data, $where, $ownerid)
+{
+    $cols = array();
+
+    foreach($data as $key=>$val) {
+        $cols[] = "$key = '$val'";
+    }
+    $sql_statement = "UPDATE $table SET " . implode(', ', $cols) . ",last_Modified = UTC_TIMESTAMP(), last_modified_id = $ownerid " ." WHERE $where";
+	return $sql_statement;
+}
 
 function send_mail_godaddy($to, $subject, $body)
 // send an email to some one from godaddy
