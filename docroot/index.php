@@ -13,6 +13,7 @@
 	require_once('class_task.php');
 	require_once('class_participant.php');
 	require_once('class_participantgroup.php');
+	require_once('class_taskhelper.php');
 	
 	// 08/16/2013: Moved this to GitHub for source code version control
 
@@ -37,7 +38,7 @@
 		$action_name = strtolower($request->action);
 		$result = $controller->$action_name($request);
     }
-
+    //header("Access-Control-Allow-Origin: *");
 	// d --- device; sc -- security code
 	function checkscode($request, $applications) {
 	    if (isset($request->parameters['d']) and isset($request->parameters['sc'])) {
