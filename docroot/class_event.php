@@ -91,9 +91,41 @@ class Event Extends Resource
 		mysqli_close($dbc);
 	}
 	
-	// this is to insert a list of task 
+	// this is to insert one task 
 	// 05/14/2015
-	Protected function insert_task($ownerid, $eventid, $task_arr) {
+	Protected function insert_task($eventid, $task) {
+		$ownerid = $task['ownerid'];
+		$taskid = $task['taskid'];
+		$desp =   $task['desp'];
+		$taskname = $task['taskname'];
+		$assignallowed = $task['assignallowed'];
+		$assignedgroupid = $task['assignedgroupid'];
+		
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+		$query = "SELECT Task_Id FROM task WHERE Task_Id = $taskid";
+        $data = mysqli_query($dbc, $query);
+		
+        if (mysqli_num_rows($data) == 1) {
+			header('HTTP/1.0 201 This task exists already', true, 201);
+	    }
+		else {	
+			$queryinsert1 = "insert into task ".
+							 "(Task_Id,Task_Name,Schedule_Id,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+							 "values('$taskid','$taskname','$eventid','$assignallowed','$assignedgroupid','$desp','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
+							
+			$result = mysqli_query($dbc,$queryinsert1);
+			if ($result !== TRUE) {
+				header('HTTP/1.0 202 Can not add a task', true, 202);
+			}
+		}	
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+        echo $data2;		
+		mysqli_close($dbc);
+	}
+	
+	// this is to insert a list of tasks 
+	// 05/14/2015
+	Protected function insert_tasks($ownerid, $eventid, $task_arr) {
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 		try {
@@ -408,6 +440,52 @@ class Event Extends Resource
 		mysqli_close($mysql);	
 	}
 	
+	
+	// this is to support patch update 
+	// 09/10/2015 Dongling API 1.5
+	Protected function partial_update_event($eventid, $event_arr) {
+		// table for event
+		$eventa = array(
+			'eventname' => 'Schedule_Name',
+			'desp' => 'Description',
+			'startdatetime' => 'Start_DateTime',
+			'enddatetime' => 'End_DateTime',
+			'tzid' => 'Tz_Id',
+			'alert' => 'Alert',
+			'location' => 'Location',
+			'host' => 'Host',
+			'reventid' => 'REvent_id'
+		);
+	
+		$ownerid = $event_arr['ownerid'];
+        $data = array();		
+        foreach($event_arr as $key => $value) {
+			foreach($eventa as $keya => $valuea) {
+				if ($key == $keya) {
+					$data[$valuea] = $value;
+					break;
+				}
+			}
+		}
+		$where = "Schedule_Id = '$eventid' ";
+		$table = "schedule";
+		
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		
+		try {
+			// update the task table
+			$query2 = build_sql_update($table, $data, $where, $ownerid);
+			$result1 = mysqli_query($dbc, $query2);
+			
+		}
+		catch (Exception $e) {
+			header('HTTP/1.0 201 Update failed', true, 202);		
+		}
+		
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+		echo $data2;
+		mysqli_close($dbc);
+	}
 
 	/***
 	   Followings are the functions called from index.php
@@ -425,6 +503,8 @@ class Event Extends Resource
 	//    POST http://[domain_name]/event
 	// 2. to create a task under an event
 	//    POST http://[domain_name]/event/1234/task
+	// 3  to create multiple tasks and assignments
+	//    POST http://[domain_name]/event/1234/taskm
     public function post($request) {
 		$parameters1 = array();
 		header('Content-Type: application/json; charset=utf8');
@@ -437,12 +517,18 @@ class Event Extends Resource
 			}
 			// ADD tasks, process them to insert into the schedule table and task and assign task
 			$this->insert($request->body_parameters['ownerid'], $request->body_parameters['communityid'], $parameters1);
-		}
-		else if ($lastElement == "task") {
+		}  
+		// to add multiple tasks
+		/** We changed the UI to remove the eventid from URL
+		else if ($lastElement == "tasks") {
 			$eventid  = $request->url_elements[count($request->url_elements)-2];
 			// ADD tasks, process them to insert into the task table and assign task
-			$this->insert_task($request->body_parameters['ownerid'],$eventid , $request->body_parameters['task']);
-		}   
+			$this->insert_tasks($request->body_parameters['ownerid'],$eventid , $request->body_parameters['task']);
+		} if ($lastElement == "task")  {
+			$eventid  = $request->url_elements[count($request->url_elements)-2];
+			$this->insert_task($eventid, $request->body_parameters);
+		} 
+		***/
     }
 	
 	// update an event 
@@ -477,6 +563,25 @@ class Event Extends Resource
 		$ownerid = $request->parameters['ownerid'];
 		$this->pdelete($scheduleid, $ownerid);
     }
+	
+	
+	// partially update event
+	// 09/10/2015
+	public function patch($request) {
+		//$parameters1 = array();
+	
+		header('Content-Type: application/json; charset=utf8');
+		$lastElement = end($request->url_elements);
+		$last2Element = $request->url_elements[count($request->url_elements)-2];
+		reset($request->url_elements);
+		
+		if ($last2Element == "event") {
+			$event_arr = $request->body_parameters;
+			$eventid = $lastElement;
+			$this->partial_update_event($eventid, $event_arr);
+		}	
+	}
+	
 
 
 }
