@@ -33,6 +33,9 @@
 	// url_element1[1]
 	$controller_name = ucfirst($request->url_elements[2]);
 	
+	header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
+    header('Access-Control-Allow-Origin: *');
+	
 	if (class_exists($controller_name)) {
 		$controller = new $controller_name($request);
 		$action_name = strtolower($request->action);
