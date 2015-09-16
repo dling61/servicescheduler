@@ -70,7 +70,7 @@ class Creator Extends Resource
 	}
 	
 	Protected function signin($body_parms) {
-	
+	  
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 		 
 		$email = $body_parms['email'];
@@ -78,23 +78,28 @@ class Creator Extends Resource
 		 
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 	  
-        $query = "SELECT IFNULL(MAX(u.User_Id ), 0) User_Id, u.User_Name User_Name, IFNULL(MAX( s.Service_Id ), 0) Service_Id, IFNULL(MAX(t.Task_Id ), 0) Task_Id, IFNULL(MAX(sc.schedule_id), 0) Schedule_Id, IFNULL(MAX(pg.PGroup_id), 0) PGroup_Id FROM user u ".
+        $query = "SELECT IFNULL(MAX(u.User_Id ), 0) User_Id, u.User_Name User_Name, u.Profile Profile, u.Mobile Mobile, IFNULL(MAX( s.Service_Id ), 0) Service_Id, IFNULL(MAX(t.Task_Id ), 0) Task_Id, ".
+		         " IFNULL(MAX(sc.schedule_id), 0) Schedule_Id, IFNULL(MAX(th.TaskHelper_id), 0) TaskHelper_Id, IFNULL(MAX(pg.PGroup_id), 0) PGroup_Id FROM user u ".
 					"LEFT JOIN service s ON u.User_Id = s.Creator_Id ".
 					"LEFT JOIN task t ON u.User_Id = t.Creator_Id ".
 					"LEFT JOIN schedule sc ON u.User_Id = sc.Creator_Id ".
+					"LEFT JOIN taskhelper th ON u.User_Id = th.Creator_Id ".
 					"LEFT JOIN participantgroup pg ON u.User_Id = pg.Creator_Id ".
 					" WHERE u.Email =  '$email' AND u.Password = SHA('$password')";
-		$data = mysqli_query($dbc, $query);
 		
+		$data = mysqli_query($dbc, $query);	
         if (mysqli_num_rows($data)==1) {
 		    $row = mysqli_fetch_array($data);
 			
 			$one_arr = array();
 			$one_arr['ownerid'] = $row['User_Id'];
 			$one_arr['username'] = $row['User_Name'];
+			$one_arr['profile'] = PROFILE_SERVER.$row['Profile'];
+			$one_arr['mobile'] = $row['Mobile'];
 			$one_arr['communityid'] = $row['Service_Id'];
 			$one_arr['taskid'] = $row['Task_Id'];
 			$one_arr['eventid'] = $row['Schedule_Id'];
+			$one_arr['taskhelperid'] = $row['TaskHelper_Id'];
 			$one_arr['participantgroupid'] = $row['PGroup_Id'];
 			
 			if ($one_arr['ownerid'] != 0) {
@@ -371,6 +376,7 @@ class Creator Extends Resource
 	
 	// this is to retrieve the latest service/member/schedule IDs from the server
 	// 05/07/2015
+	// NOT Used any more 09/16/2015
 	Protected function pgetlastId($ownerid) {
 	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
@@ -522,29 +528,6 @@ class Creator Extends Resource
 	// /creator/register; /creator/signin; ......
     public function post($request) {
 		header('Content-Type: application/json; charset=utf8');
-		/**
-	    if ($request->parameters['action'] == 'register') {
-			$this->register($request->body_parameters);
-		}
-		else if ($request->parameters['action'] == 'signin') {
-		    $this->signin($request->body_parameters);
-		} 
-		else if ($request->parameters['action'] == 'resetpw') {
-		    $this->resetpw($request->body_parameters);
-		} 
-		else if ($request->parameters['action'] == 'settoken') {
-		    $this->settoken($request->body_parameters);
-		} 
-		else if ($request->parameters['action'] == 'setpassword') {
-		    $this->setpassword($request->body_parameters);
-		} 
-		else if ($request->parameters['action'] == 'invite') {
-		    $this->invite($request->body_parameters);
-		} 
-		else if ($request->parameters['action'] == 'upload'){
-			$this->upload_image($request->body_parameters);
-		}
-		***/
 		
 		$lastElement = end($request->url_elements);
 		reset($request->url_elements);
