@@ -74,6 +74,46 @@ class TaskHelper Extends Resource
 		mysqli_close($dbc);
 	}
 	
+	// to update some values of attributes
+	// Patch 
+	// 09/16/2015
+	Protected function partial_update_patch($taskhelperid, $taskhelper_arr) {
+		// table for task
+		$taskhelpera = array(
+			'userid' => 'Task_Id',
+			'taskid' => 'User_Id',
+			'status' => 'Status'
+		);
+	
+		$ownerid = $taskhelper_arr['ownerid'];
+        $data = array();		
+        foreach($taskhelper_arr as $key => $value) {
+			foreach($taskhelpera as $keya => $valuea) {
+				if ($key == $keya) {
+					$data[$valuea] = $value;
+					break;
+				}
+			}
+		}
+		$where = "TaskHelper_Id = '$taskhelperid' ";
+		$table = "taskhelper";
+		
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		
+		try {
+			// update the taskhelper table
+			$query2 = build_sql_update($table, $data, $where, $ownerid);
+			$result1 = mysqli_query($dbc, $query2);
+			
+		}
+		catch (Exception $e) {
+			header('HTTP/1.0 201 Update failed', true, 202);		
+		}
+		
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+		echo $data2;
+		mysqli_close($dbc);
+	}
 
 	// GET method here is to handle the case to retrieve all assignments
 	//  
@@ -92,6 +132,8 @@ class TaskHelper Extends Resource
     }
 
 	// partially update task
+	// this is to update the status "A" -- assigned; "C" -- Confirmed; "D"  -- Denied
+	// http://[Domain_Name]/taskhelper/12323
 	// 08/26/2015
 	public function patch($request) {
 		$parameters1 = array();
@@ -101,10 +143,10 @@ class TaskHelper Extends Resource
 		$last2Element = $request->url_elements[count($request->url_elements)-2];
 		reset($request->url_elements);
 		
-		if ($last2Element == "task") {
-			$task_arr = $request->body_parameters;
-			$taskid = $lastElement;
-			$this->partial_update_task($taskid, $task_arr);
+		if ($last2Element == "taskhelper") {
+			$taskhelper_arr = $request->body_parameters;
+			$taskhelperid = $lastElement;
+			$this->partial_update_patch($taskhelperid, $taskhelper_arr);
 		}	
 	}
 	
