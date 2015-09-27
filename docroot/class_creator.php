@@ -79,11 +79,12 @@ class Creator Extends Resource
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 	  
         $query = "SELECT IFNULL(MAX(u.User_Id ), 0) User_Id, u.User_Name User_Name, u.Profile Profile, u.Mobile Mobile, IFNULL(MAX( s.Service_Id ), 0) Service_Id, IFNULL(MAX(t.Task_Id ), 0) Task_Id, ".
-		         " IFNULL(MAX(sc.schedule_id), 0) Schedule_Id, IFNULL(MAX(th.TaskHelper_id), 0) TaskHelper_Id, IFNULL(MAX(pg.PGroup_id), 0) PGroup_Id FROM user u ".
+		         " IFNULL(MAX(sc.schedule_id), 0) Schedule_Id, IFNULL(MAX(th.TaskHelper_id), 0) TaskHelper_Id, IFNULL(MAX(bs.REvent_Id), 0) REvent_Id, IFNULL(MAX(pg.PGroup_id), 0) PGroup_Id FROM user u ".
 					"LEFT JOIN service s ON u.User_Id = s.Creator_Id ".
 					"LEFT JOIN task t ON u.User_Id = t.Creator_Id ".
 					"LEFT JOIN schedule sc ON u.User_Id = sc.Creator_Id ".
 					"LEFT JOIN taskhelper th ON u.User_Id = th.Creator_Id ".
+					"LEFT JOIN baseschedule bs ON u.User_Id = bs.Creator_Id ".
 					"LEFT JOIN participantgroup pg ON u.User_Id = pg.Creator_Id ".
 					" WHERE u.Email =  '$email' AND u.Password = SHA('$password')";
 		
@@ -100,6 +101,7 @@ class Creator Extends Resource
 			$one_arr['taskid'] = $row['Task_Id'];
 			$one_arr['eventid'] = $row['Schedule_Id'];
 			$one_arr['taskhelperid'] = $row['TaskHelper_Id'];
+			$one_arr['baseeventid'] = $row['REvent_Id'];
 			$one_arr['participantgroupid'] = $row['PGroup_Id'];
 			
 			if ($one_arr['ownerid'] != 0) {
