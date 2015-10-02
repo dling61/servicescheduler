@@ -450,7 +450,9 @@ class Community Extends Resource
 	    
 		$return_arr = array();
 		$delevent_arr = array();
+		$delbevent_arr = array();
 		$event_arr = array();
+		$bevent_arr = array();
 		$task_arr = array();
 		$assignment_arr = array();
 		$final_event_arr = array();
@@ -469,6 +471,7 @@ class Community Extends Resource
 				$j = 0;
 				$k = 0;
 				$l = 0;
+				//$m = 0;
                 //Loop the two result sets, reading it into an array
                 while ($row = $result->fetch_array(MYSQLI_ASSOC))
                 {
@@ -492,7 +495,7 @@ class Community Extends Resource
 						   $one_arr['tzid'] = $row['tzid'];
 						   $one_arr['location'] = $row['location'];
 						   $one_arr['host']  = $row['host'];
-						   $one_arr['reventid'] = $row['reventid'];
+						   $one_arr['beventid'] = $row['reventid'];
 						   $one_arr['task'] = "";
 						   $event_arr[$i] = $one_arr;
 						   $i++;			   
@@ -511,7 +514,7 @@ class Community Extends Resource
 						$task_arr[$k] = $two_arr;
 						$k++;
 					}
-					else {
+					else if ($h == 2){
 						// third result set for assignment
 						$third_arr = array();
 						$third_arr['taskid'] = $row['taskid'];
@@ -535,15 +538,49 @@ class Community Extends Resource
         {
             echo '<strong>Error Message ' . $mysql->error . '</strong></p>';
         }
+		// get the base events
+		$query = "SELECT distinct bs.REvent_Id beventid, bs.REvent_Name eventname, bs.REvent_StartTime starttime, bs.REvent_EndTime endtime, bs.REvent_Location location, ".
+			" bs.REvent_Host host, bs.REvent_Tz_Id tzid, bs.Frequency frequency, bs.RepeatInterval binterval, bs.From bfrom, bs.To bto,".
+			" bs.Is_Deleted isdeleted, bs.Created_Time createdtime, bs.Last_Modified lastmodified ".
+			" FROM baseschedule bs LEFT JOIN schedule sc ".
+			" ON bs.REvent_Id = sc.REvent_Id and sc.Service_Id = '$communityid' and bs.Last_Modified > '$lastupdatetime' order by bs.REvent_Id";
+			
+		$data = mysqli_query($mysql, $query) or die("Error is: \n ".mysqli_error($mysql)); 
+		echo $lastupdatetime;
+		if(mysqli_num_rows($data) > 0) {
+			$m = 0;
+			while($row = mysqli_fetch_array($data)){
+				$fourth_arr = array();
+				$fourth_arr['beventid'] = $row['beventid'];
+				$fourth_arr['eventname'] = $row['eventname'];
+				//$fourth['desp'] = $row['desp'];
+				$fourth_arr['starttime'] = $row['starttime'];
+				$fourth_arr['endtime'] = $row['endtime'];
+				$fourth_arr['tzid'] = $row['tzid'];
+				$fourth_arr['starttime'] = $row['starttime'];
+				$fourth_arr['endtime'] = $row['endtime'];
+				$fourth_arr['tzid'] = $row['tzid'];
+				$fourth_arr['location'] = $row['location'];
+				$fourth_arr['host'] = $row['host'];
+				$fourth_arr['frequency'] = $row['frequency'];
+				$fourth_arr['interval'] = $row['binterval'];
+				$fourth_arr['from'] = $row['bfrom'];
+				$fourth_arr['to'] = $row['bto'];
+				$bevent_arr[$m] = $fourth_arr;
+				$m++;
+			}
+		}
 		
 		mysqli_close($mysql);	
 	    $delevent_str = array();
-		$delevent_str = implode(",", $delevent_arr); // concatenate to the string seprating by ,
+		$delevent_str = implode(",", $delevent_arr); // concatenate to the string separating by ,
+		$delbevent_str = array();
+		$delbevent_str = implode(",", $delbevent_arr); // concatenate to the string separating by ,
 		
 		// Construct a output jason object starting from event, task, and then assignment
 		foreach ($event_arr as $svalue) {
 			$eventid = $svalue['eventid'];
-			$reventid = $svalue['reventid'];
+			$reventid = $svalue['beventid'];
 			// go down to task level
 			$task_temp = array();
 			$i = 0;
@@ -604,6 +641,7 @@ class Community Extends Resource
 		// finally get this output
 		$return_arr['deletedevent'] = $delevent_arr;
 		$return_arr['event'] = $final_event_arr;
+		$return_arr['baseevent'] = $bevent_arr;
          
 		$data2 = json_encode($return_arr);
 		echo $data2;
@@ -613,12 +651,14 @@ class Community Extends Resource
 		    logserver_response($this->lastid,$data2);
 	}
 	
+	
 	// This is to add a participant to a community (04/29/2015)
 	Protected function insert_participant($serviceid, $body_param) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 		
 		$ownerid = $body_param['ownerid'];
-		$userid = $body_param['userid'];
+		//$userid = $body_param['userid'];
+		$userid = $body_param['id'];
 		$userrole = $body_param['userrole'];
 		
 		$query = "SELECT Is_Deleted isdeleted FROM participant WHERE Service_Id = '$serviceid' and User_Id = '$userid' LIMIT 1";
@@ -875,12 +915,15 @@ class Community Extends Resource
 	
 	// update a service with the service Id and update a role shared with activity
 	// 1. PUT http://[api_domain_name]/community/1234
-	// 2. PUT http://[api_domain_name]/community/1234/participant/1111
+	// 2. PUT http://[api_domain_name]/community/1234/participant
+	// 3. PUT http://[api_domain_name]/community/1234/participant/1111
 	public function put($request) {
         $parameters1 = array();
 		
 		header('Content-Type: application/json; charset=utf8');
+		$lastElement = end($request->url_elements);
 		$last2Element = $request->url_elements[count($request->url_elements)-2];
+		reset($request->url_elements);
 		
 		if ($last2Element == "community") {
 			/**
@@ -902,6 +945,11 @@ class Community Extends Resource
 			$communityid = $request->url_elements[count($request->url_elements)-3];
 			$this->update_sm($communityid, $userid, $request->body_parameters);
 		
+		}
+		else {
+			// this is the case #2  /community/1234/participant to add participant 
+			
+			
 		}
     }
 	
