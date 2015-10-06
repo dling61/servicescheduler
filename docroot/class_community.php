@@ -447,7 +447,7 @@ class Community Extends Resource
 	// First result is for events; Second result is for tasks; Third result is for assignment
 	// This is for API 1.5  04/27/2015
 	Protected function pgetlastupdate_sh($communityid, $lastupdatetime) {
-	    
+	  
 		$return_arr = array();
 		$delevent_arr = array();
 		$delbevent_arr = array();
@@ -471,7 +471,7 @@ class Community Extends Resource
 				$j = 0;
 				$k = 0;
 				$l = 0;
-				//$m = 0;
+				$m = 0;
                 //Loop the two result sets, reading it into an array
                 while ($row = $result->fetch_array(MYSQLI_ASSOC))
                 {
@@ -510,21 +510,43 @@ class Community Extends Resource
 						$two_arr['desp'] = $row['description'];
 						$two_arr['assignallowed'] = $row['assignallowed'];
 						//$two_arr['assignedgroup'] = $row['assignedgroup'];
-					    $two_arr['assignment'] = "";
+					    $two_arr['taskhelper'] = "";
 						$task_arr[$k] = $two_arr;
 						$k++;
 					}
 					else if ($h == 2){
-						// third result set for assignment
+						// third result set for taskhelper
 						$third_arr = array();
+						$third_arr['taskhelperid'] = $row['taskhelperid'];
 						$third_arr['taskid'] = $row['taskid'];
 						$third_arr['eventid'] = $row['eventid'];
 						$third_arr['userid'] = $row['userid'];
 						$third_arr['username'] = $row['username'];
 						$third_arr['userprofile'] = PROFILE_SERVER .$row['userprofile'];
-						$third_arr['confirm'] = $row['confirm'];
+						$third_arr['status'] = $row['status'];
 					    $assignment_arr[$l] = $third_arr;
+						echo $third_arr['userid'];
 						$l++;
+					} if ($h == 3) {
+						// fourth result set for base event
+						$fourth_arr = array();
+						$fourth_arr['beventid'] = $row['beventid'];
+						$fourth_arr['eventname'] = $row['eventname'];
+						//$fourth['desp'] = $row['desp'];
+						$fourth_arr['starttime'] = $row['starttime'];
+						$fourth_arr['endtime'] = $row['endtime'];
+						$fourth_arr['tzid'] = $row['tzid'];
+						$fourth_arr['starttime'] = $row['starttime'];
+						$fourth_arr['endtime'] = $row['endtime'];
+						$fourth_arr['tzid'] = $row['tzid'];
+						$fourth_arr['location'] = $row['location'];
+						$fourth_arr['host'] = $row['host'];
+						$fourth_arr['frequency'] = $row['frequency'];
+						$fourth_arr['interval'] = $row['binterval'];
+						$fourth_arr['from'] = $row['bfrom'];
+						$fourth_arr['to'] = $row['bto'];
+						$bevent_arr[$m] = $fourth_arr;
+						$m++;
 					}
                 } // while end
 	
@@ -538,38 +560,6 @@ class Community Extends Resource
         {
             echo '<strong>Error Message ' . $mysql->error . '</strong></p>';
         }
-		// get the base events
-		$query = "SELECT distinct bs.REvent_Id beventid, bs.REvent_Name eventname, bs.REvent_StartTime starttime, bs.REvent_EndTime endtime, bs.REvent_Location location, ".
-			" bs.REvent_Host host, bs.REvent_Tz_Id tzid, bs.Frequency frequency, bs.RepeatInterval binterval, bs.From bfrom, bs.To bto,".
-			" bs.Is_Deleted isdeleted, bs.Created_Time createdtime, bs.Last_Modified lastmodified ".
-			" FROM baseschedule bs LEFT JOIN schedule sc ".
-			" ON bs.REvent_Id = sc.REvent_Id and sc.Service_Id = '$communityid' and bs.Last_Modified > '$lastupdatetime' order by bs.REvent_Id";
-			
-		$data = mysqli_query($mysql, $query) or die("Error is: \n ".mysqli_error($mysql)); 
-		echo $lastupdatetime;
-		if(mysqli_num_rows($data) > 0) {
-			$m = 0;
-			while($row = mysqli_fetch_array($data)){
-				$fourth_arr = array();
-				$fourth_arr['beventid'] = $row['beventid'];
-				$fourth_arr['eventname'] = $row['eventname'];
-				//$fourth['desp'] = $row['desp'];
-				$fourth_arr['starttime'] = $row['starttime'];
-				$fourth_arr['endtime'] = $row['endtime'];
-				$fourth_arr['tzid'] = $row['tzid'];
-				$fourth_arr['starttime'] = $row['starttime'];
-				$fourth_arr['endtime'] = $row['endtime'];
-				$fourth_arr['tzid'] = $row['tzid'];
-				$fourth_arr['location'] = $row['location'];
-				$fourth_arr['host'] = $row['host'];
-				$fourth_arr['frequency'] = $row['frequency'];
-				$fourth_arr['interval'] = $row['binterval'];
-				$fourth_arr['from'] = $row['bfrom'];
-				$fourth_arr['to'] = $row['bto'];
-				$bevent_arr[$m] = $fourth_arr;
-				$m++;
-			}
-		}
 		
 		mysqli_close($mysql);	
 	    $delevent_str = array();
@@ -604,16 +594,17 @@ class Community Extends Resource
 						if ($avalue['taskid'] == $task_id and $avalue['eventid'] == $eventid) {
 							$assignment_temp_1 = array();
 							
+							$assignment_temp_1['taskhelperid'] = $avalue['taskhelperid'];
 							$assignment_temp_1['userid'] = $avalue['userid'];
 							$assignment_temp_1['username'] = $avalue['username'];
 							$assignment_temp_1['userprofile'] = $avalue['userprofile'];
-							$assignment_temp_1['confirm'] = $avalue['confirm'];
+							$assignment_temp_1['status'] = $avalue['status'];
 							
 							$assignment_temp[$j] = $assignment_temp_1;
 							$j++;
 						}
 					}
-					$task_temp_1['assignment'] = $assignment_temp;
+					$task_temp_1['taskhelper'] = $assignment_temp;
 					//add tasks
 					$task_temp[$i] = $task_temp_1;
 					$i++;
@@ -639,7 +630,7 @@ class Community Extends Resource
 		unset($svalue);
 		
 		// finally get this output
-		$return_arr['deletedevent'] = $delevent_arr;
+		//$return_arr['deletedevent'] = $delevent_arr;
 		$return_arr['event'] = $final_event_arr;
 		$return_arr['baseevent'] = $bevent_arr;
          
