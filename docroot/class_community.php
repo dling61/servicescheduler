@@ -525,7 +525,6 @@ class Community Extends Resource
 						$third_arr['userprofile'] = PROFILE_SERVER .$row['userprofile'];
 						$third_arr['status'] = $row['status'];
 					    $assignment_arr[$l] = $third_arr;
-						echo $third_arr['userid'];
 						$l++;
 					} if ($h == 3) {
 						// fourth result set for base event
