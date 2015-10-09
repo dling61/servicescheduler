@@ -13,7 +13,8 @@ class Task Extends Resource
     }
 	
 	protected $lastid;
-	// create a new schedule
+	
+	// create a new event TBD
 	Protected function insert($ownerid, $serviceid, $schedule_parms) {
 	    $members = array();													
 		
@@ -116,13 +117,12 @@ class Task Extends Resource
 		$taska = array(
 			'taskname' => 'Task_Name',
 			'desp' => 'Description',
+			'repeating' => 'Repeating',
 			'assignallowed' => 'Assign_Allowed'
 		);
 	
 		$ownerid = $task_arr['ownerid'];
-		//$taskname = $task_arr['taskname'];
-		//$desp = $task_arr['desp'];
-		//$assignallowed = $task_arr['assignallowed'];
+	
         $data = array();		
         foreach($task_arr as $key => $value) {
 			foreach($taska as $keya => $valuea) {
@@ -140,7 +140,7 @@ class Task Extends Resource
 		try {
 			// update the task table
 			$query2 = build_sql_update($table, $data, $where, $ownerid);
-			//$query2 = "Update task set Task_Name = '$taskname', Description = '$desp', Assign_Allowed = '$assignallowed', last_Modified = UTC_TIMESTAMP(), last_modified_id = '$ownerid' ".
+			//$query2 = "Update task set Task_Name = '$taskname', Repeating = '$repeating', Description = '$desp', Assign_Allowed = '$assignallowed', last_Modified = UTC_TIMESTAMP(), last_modified_id = '$ownerid' ".
 						" where Task_id = '$taskid' ";
 			$result1 = mysqli_query($dbc, $query2);
 			
@@ -188,6 +188,38 @@ class Task Extends Resource
 		
     }	
 	
+	// To create a task
+	// 08/30/2015 
+	Protected function insert_task($eventid, $task) {
+		$ownerid = $task['ownerid'];
+		$taskid = $task['taskid'];
+		$desp =   $task['desp'];
+		$taskname = $task['taskname'];
+		$repeating = $task['repeating'];
+		$assignallowed = $task['assignallowed'];
+		$assignedgroupid = $task['assignedgroupid'];
+		
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+		$query = "SELECT Task_Id FROM task WHERE Task_Id = $taskid";
+        $data = mysqli_query($dbc, $query);
+		
+        if (mysqli_num_rows($data) == 1) {
+			header('HTTP/1.0 201 This task exists already', true, 201);
+	    }
+		else {	
+			$queryinsert1 = "insert into task ".
+							 "(Task_Id,Task_Name,Schedule_Id,Repeating,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+							 "values('$taskid','$taskname','$eventid', '$repeating','$assignallowed','$assignedgroupid','$desp','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
+							
+			$result = mysqli_query($dbc,$queryinsert1);
+			if ($result !== TRUE) {
+				header('HTTP/1.0 202 Can not add a task', true, 202);
+			}
+		}	
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+        echo $data2;		
+		mysqli_close($dbc);
+	}
 	
 	//
 	//  This is to update the assignment, add or delete participants
@@ -359,38 +391,40 @@ class Task Extends Resource
 	}
 	
 	/**
-	  This is to delete the schedule
+	  This is to delete the task
+	  It can delete one time task or repeating task depending on task Id
+	  TBD: Can't handle the case in which only deleting one task associated with one event when that task is a repeating task
 	**/
-	Protected function pdelete($scheduleid, $ownerid) {
+	Protected function pdelete($taskid, $ownerid) {
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
-		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$scheduleid' and Is_Deleted = 0";
+		$query = "SELECT * FROM task WHERE Task_Id = '$taskid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data)==0) {
-			header('HTTP/1.0 201 This schedule doesn\'t exist and has been deleted', true, 201);
+			header('HTTP/1.0 201 This task doesn\'t exist and has been deleted', true, 201);
 	    }
 		else {
-			// Serchdule exists and go ahead to update it
+			// task exists and go ahead to update it
 			// two steps commit
 			mysqli_autocommit($dbc, FALSE);
-			// update this schedule by setting the flag Is_Deleted to 1
-			$queryupdate = "update schedule set ".
+			// update this task by setting the flag Is_Deleted to 1
+			$queryupdate = "update task set ".
 						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-						" where Schedule_Id = '$scheduleid'";
+						" where Task_Id = '$taskid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
 				mysqli_rollback($dbc);
-				header('HTTP/1.0 202 This schedule can\'t be deleted', true, 202);
+				header('HTTP/1.0 202 This task can\'t be deleted', true, 202);
 				exit;
 			}
 			else {
-				// first to delete the existing relationship
-				$querydelete = "update onduty set ".
+				// first to delete the taskhelper associated with that task
+				$querydelete = "update taskhelper set ".
 				               " Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-							   " WHERE Schedule_Id = '$scheduleid'";
+							   " WHERE Task_Id = '$taskid'";
 				
 				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
 				if ($result !== TRUE) {
@@ -551,6 +585,7 @@ class Task Extends Resource
 
 	// Assign a participant to the task
 	// 1. POST http://[api_domain_name]/task/1234/assignment
+	// 2. POST http://[api_domain_name]/task
     public function post($request) {
 		$parameters1 = array();
 		
@@ -567,6 +602,11 @@ class Task Extends Resource
 			$taskid  = $request->url_elements[count($request->url_elements)-2];
 			$this->add_assignment($taskid, $ownerid, $userid, $eventid);
 		} 
+		else if ($lastElement == "task") {
+			// a flat property to create a task
+			$eventid = $request->body_parameters['eventid'];
+			$this->insert_task($eventid, $request->body_parameters);	
+		}
     }
 	
 	// partially update task
@@ -637,37 +677,11 @@ class Task Extends Resource
 	// 2. Delete http://[api_domain_name]/task/1234
 	// 07/24/2015 Dongling API 1.5   TBD
 	public function delete($request) {
-		/**
-	    $parameters1 = array();
 		
-		header('Content-Type: application/json; charset=utf8');
-		$lastElement = end($request->url_elements);
-		$last2Element = $request->url_elements[count($request->url_elements)-2];
+		$taskid = end($request->url_elements);
 		reset($request->url_elements);
-		
-		if ($lastElement == "assignment") {
-			$ownerid = $request->body_parameters['ownerid'];
-			$eventid = $request->body_parameters['eventid'];
-			$add_arr = $request->body_parameters['add'];
-			$delete_arr = $request->body_parameters['delete'];
-			
-			$taskid  = $request->url_elements[count($request->url_elements)-2];
-			$this->update_assignment($taskid, $eventid, $ownerid, $add_arr, $delete_arr);
-		}
-		else if ($last2Element == "task") {
-			$task_arr = $request->body_parameters;
-			$taskid = $lastElement;
-			
-			$this->update_task($taskid, $task_arr);
-		}
-		***/
-		
-		$scheduleid = end($request->url_elements);
-		reset($request->url_elements);
-		$ownerid = $request->parameters['ownerid'];
-		$this->pdelete($scheduleid, $ownerid);
+		$ownerid = $request->body_parameters['ownerid'];
+		$this->pdelete($taskid, $ownerid);
     }
-
-
 }
 ?>
