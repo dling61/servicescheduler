@@ -507,6 +507,7 @@ class Community Extends Resource
 						$two_arr['taskid'] = $row['taskid'];
 						$two_arr['eventid'] = $row['eventid'];
 						$two_arr['taskname'] = $row['taskname'];
+						$two_arr['repeating'] = $row['repeating'];
 						$two_arr['desp'] = $row['description'];
 						$two_arr['assignallowed'] = $row['assignallowed'];
 						//$two_arr['assignedgroup'] = $row['assignedgroup'];
@@ -582,6 +583,11 @@ class Community Extends Resource
 					$task_temp_1['taskid'] = $mvalue['taskid'];
 					$task_temp_1['taskname'] = $mvalue['taskname'];
 					$task_temp_1['desp'] = $mvalue['desp'];
+					if ($mvalue['repeating'] == 1) {
+						$task_temp_1['repeating'] = "True";
+					} else {
+						$task_temp_1['repeating'] = "False";
+					}
 					$task_temp_1['assignallowed'] = $mvalue['assignallowed'];
 					//$task_temp_1['assignedgroup'] = $mvalue['assignedgroup'];
 				
