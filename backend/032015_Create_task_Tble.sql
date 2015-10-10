@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `task` (
   `Task_Name` varchar(200) NOT NULL,
   `Schedule_Id` int(11) NOT NULL,
   `Alert` int(11) NOT NULL,
+  `Repeating` tinyint(1) NOT NULL,
   `Assign_Allowed` int(3) NOT NULL,
   `Assigned_Group` int(3) NOT NULL,
   `Start_DateTime` int(10) NOT NULL,
