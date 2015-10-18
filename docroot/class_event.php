@@ -13,6 +13,52 @@ class Event Extends Resource
     }
 	protected $lastid;
 	
+	// create a single event without tasks or one of repeating events
+	// If creating a repeating event, "beventid" needs to be passed in by client. Otherwise, it's 0 for "beventid" for a single event
+	// 10/16/2015
+	Protected function insert_single_event($event_parms) {
+	
+		$ownerid = $event_parms['ownerid'];
+		$communityid = $event_parms['communityid'];
+		$eventid = $event_parms['eventid'];
+		$eventname = $event_parms['eventname'];
+		$description = $event_parms['desp'];
+		$startdatetime = $event_parms['startdatetime'];
+		$enddatetime = $event_parms['enddatetime'];
+		$alert = $event_parms['alert'];
+		$tzid = $event_parms['tzid'];
+		$location = $event_parms['location'];
+		$host = $event_parms['host'];
+		$beventid =  $event_parms['beventid'];
+		
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!'); 
+	 
+		$query = "SELECT Schedule_Id FROM Schedule WHERE Schedule_Id = $eventid";
+        $data = mysqli_query($dbc, $query);
+		
+        if (mysqli_num_rows($data) == 1) {
+			header('HTTP/1.0 201 This event exists already', true, 201);
+	    }
+		else {	
+			// case #1 Repeating events -- first repeating event
+			// Create a base event in the baseschedule and the first table in the schedule table
+			$queryinsert = "INSERT INTO schedule ".
+									"(Schedule_Id,Schedule_Name,Service_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host, REvent_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+									" values('$eventid','$eventname','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', '$location', '$host', '$beventid',".
+									" '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(),'$ownerid')";
+				
+			$result = mysqli_query($dbc,$queryinsert);
+			if ($result !== TRUE) {
+					header('HTTP/1.0 202 Can not create an event and its tasks', true, 202);
+			}   
+		}
+		
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+		echo $data2;
+		//$data->close();
+		mysqli_close($dbc);
+	}
+	
 	// create a new schedule and associated tasks
 	// 05/14/2015
 	Protected function insert($ownerid, $communityid, $event_parms) {
@@ -512,6 +558,12 @@ class Event Extends Resource
 		$lastElement = end($request->url_elements);
 		reset($request->url_elements);
 		if ($lastElement == "event") {
+			// process a single event
+			$this->insert_single_event($request->body_parameters);
+		}  
+		/** this is a URL to insert a task and associated tasks
+		/***
+		if ($lastElement == "event") {
 			foreach($request->body_parameters['event'] as $param_name => $param_value) {
 				$parameters1[$param_name] = $param_value;				
 			}
@@ -519,7 +571,6 @@ class Event Extends Resource
 			$this->insert($request->body_parameters['ownerid'], $request->body_parameters['communityid'], $parameters1);
 		}  
 		// to add multiple tasks
-		/** We changed the UI to remove the eventid from URL
 		else if ($lastElement == "tasks") {
 			$eventid  = $request->url_elements[count($request->url_elements)-2];
 			// ADD tasks, process them to insert into the task table and assign task
