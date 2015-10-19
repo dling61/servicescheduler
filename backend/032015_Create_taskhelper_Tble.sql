@@ -12,3 +12,8 @@ CREATE TABLE IF NOT EXISTS `taskhelper` (
   `Last_Modified` datetime NOT NULL,
   `Last_Modified_Id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+ALTER TABLE taskhelper ADD PRIMARY KEY(TaskHelper_Id);
+
+ALTER TABLE taskhelper ADD UNIQUE gsc (Task_Id, Schedule_Id, User_Id);
