@@ -373,6 +373,10 @@ class Creator Extends Resource
 				move_uploaded_file($tmpFile, $fileName);
 			}
 			***/
+		}
+		else {
+			header('HTTP/1.0 202 Error in images', true, 202);
+			echo json_encode(array('error message'=>'there is an issue on image upload'));
 		}		
 	}
 	
