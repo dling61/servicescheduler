@@ -1,6 +1,7 @@
 
 
 CREATE TABLE IF NOT EXISTS `participant` (
+  `Participant_Id` int(11) NOT NULL,
   `Service_Id` int(11) NOT NULL,
   `User_Id` int(11) NOT NULL,
   `User_Role` int(2) NOT NULL,
