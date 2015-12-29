@@ -18,7 +18,7 @@
 
   -- Event list
   SELECT Schedule_Id eventid, Service_Id communityid, Schedule_Name eventname, Creator_Id creatorid, Description description, FROM_UNIXTIME(Start_Datetime) startdatetime,
-          FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert, Tz_Id tzid, Is_Deleted isdeleted, REvent_Id reventid, Location location, Host host, Created_Time createdtime, Last_Modified lastmodified
+          FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert, Tz_Id tzid, Status status, Is_Deleted isdeleted, REvent_Id reventid, Location location, Host host, Created_Time createdtime, Last_Modified lastmodified
       FROM schedule where Service_Id = communityid and Last_Modified > p_lastupdate and Is_Deleted = 0 order by schedule.Start_Datetime;
   
   -- create a temp table
