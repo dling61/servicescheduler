@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS `task` (
   `Start_DateTime` int(10) NOT NULL,
   `End_DateTime` int(10) NOT NULL,
   `Description` varchar(2000) NOT NULL,
+  `DisplayOrder` inte(2) NOT NULL,
   `Is_Deleted` tinyint(1) NOT NULL,
   `Creator_Id` int(11) NOT NULL,
   `Created_Time` datetime NOT NULL,
