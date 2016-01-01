@@ -29,6 +29,7 @@ class Event Extends Resource
 		$tzid = $event_parms['tzid'];
 		$location = $event_parms['location'];
 		$host = $event_parms['host'];
+		$status = $event_parms['status'];
 		$beventid =  $event_parms['beventid'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!'); 
@@ -43,13 +44,14 @@ class Event Extends Resource
 			// case #1 Repeating events -- first repeating event
 			// Create a base event in the baseschedule and the first table in the schedule table
 			$queryinsert = "INSERT INTO schedule ".
-									"(Schedule_Id,Schedule_Name,Service_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host, REvent_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
-									" values('$eventid','$eventname','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', '$location', '$host', '$beventid',".
+									"(Schedule_Id,Schedule_Name,Service_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host, Status, REvent_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+									" values('$eventid','$eventname','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', '$location', '$host', '$status', '$beventid',".
 									" '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(),'$ownerid')";
-				
+			
 			$result = mysqli_query($dbc,$queryinsert);
 			if ($result !== TRUE) {
-					header('HTTP/1.0 202 Can not create an event and its tasks', true, 202);
+					header('HTTP/1.0 202 Can not create a single event', true, 202);
+					exit;
 			}   
 		}
 		
@@ -221,44 +223,31 @@ class Event Extends Resource
 	
 	// this is to update event only 
 	// This API doesn't update associated task
+	// 12/28/2015
 	Protected function update($eventid, $ownerid, $event_parms) {	
+	
+		$tzid = $event_parms['tzid'];
+		$eventname = $event_parms['eventname'];
+		$desp = $event_parms['desp'];
+		$alert = $event_parms['alert'];
+		$location = $event_parms['location'];
+		$host = $event_parms['host'];
+		$startdatetime = $event_parms['startdatetime'];
+		$enddatetime = $event_parms['enddatetime'];
+		$status = $event_parms['status'];
+		$beventid = $event_parms['beventid'];
 		
-		$tablelist = array (
-		  "tzid" => "Tz_Id",
-		  "alert" => "Alert",
-		  "location" => "Location",
-		  "host" => "Host",
-		  "startdatetime" => "Start_DateTime",
-		  "enddatetime" => "End_DateTime",
-		  "eventname" => "Schedule_Name",
-		  "desp" => "Description"
-		  );
-		  
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$eventid'";
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
         if (mysqli_num_rows($data)==1) {
 		    // event exists and go ahead to update it
-			$queryupdate = "UPDATE schedule SET";
-			$comma = " ";
-			foreach($event_parms as $key => $val) {
-				if( ! empty($val)) {
-					$val = mysqli_real_escape_string($dbc, $val);
-					$key = $tablelist[$key];
-					
-					if ($key == 'Start_DateTime' or $key == 'End_DateTime') {
-						//$queryupdate .= $comma . $key . " = " . "UNIX_TIMESTAMP(" .$val .")";
-						$queryupdate .= $comma . $key . " = " . "UNIX_TIMESTAMP(" ."'" .$val ."'" .")";
-					}
-					else  {
-						$queryupdate .= $comma . $key . " = '" . $val . "'";
-					}
-					$comma = ", ";
-				}
-			}
+			$queryupdate = "Update schedule set Tz_id = $tzid, Schedule_Name = '$eventname', Description = '$desp', Alert = $alert, ".
+                           " Location = '$location', Host = '$host', Start_DateTime = UNIX_TIMESTAMP('$startdatetime'), End_DateTime = UNIX_TIMESTAMP('$enddatetime'),"	.
+                           " Status = '$status', REvent_id = $beventid ";					   
 			$queryupdate = $queryupdate . ", Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = " . $ownerid . " Where Schedule_Id = " .$eventid .";";
-		
+		    
 			try {
 				$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			}
@@ -500,7 +489,8 @@ class Event Extends Resource
 			'alert' => 'Alert',
 			'location' => 'Location',
 			'host' => 'Host',
-			'reventid' => 'REvent_id'
+			'reventid' => 'REvent_id',
+			'status' => 'Status'
 		);
 	
 		$ownerid = $event_arr['ownerid'];
@@ -591,15 +581,11 @@ class Event Extends Resource
 		header('Content-Type: application/json; charset=utf8');
 		$last2Element = $request->url_elements[count($request->url_elements)-2];	
 		if ($last2Element == "event") {
-			if ($request->body_parameters['event']) {
-				foreach($request->body_parameters['event'] as $param_name => $param_value) {
-								$parameters1[$param_name] = $param_value;
-				}
-			}
 			// update an event
+			$ownerid = $request->body_parameters['ownerid'];
 			$eventid = end($request->url_elements);
 			reset($request->url_elements);
-			$this->update($eventid,$request->body_parameters['ownerid'], $parameters1);
+			$this->update($eventid, $ownerid, $request->body_parameters);
 	    }
     }
 	
@@ -618,6 +604,8 @@ class Event Extends Resource
 	
 	// partially update event
 	// 09/10/2015
+	// 1. to update one or more attributes  [12/24/2015]
+	//    PATCH http://[domain_name]/event/222112
 	public function patch($request) {
 		//$parameters1 = array();
 	
