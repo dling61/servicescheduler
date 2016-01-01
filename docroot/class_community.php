@@ -495,6 +495,7 @@ class Community Extends Resource
 						   $one_arr['tzid'] = $row['tzid'];
 						   $one_arr['location'] = $row['location'];
 						   $one_arr['host']  = $row['host'];
+						   $one_arr['status']  = $row['status'];
 						   $one_arr['beventid'] = $row['reventid'];
 						   $one_arr['task'] = "";
 						   $event_arr[$i] = $one_arr;
