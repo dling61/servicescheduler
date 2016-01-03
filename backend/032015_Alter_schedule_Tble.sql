@@ -1,5 +1,7 @@
 
-ALTER TABLE schedule ADD Schedule_Name varchar(100) AFTER Schedule_Id;
+ALTER TABLE schedule ADD  Schedule_Name varchar(100) AFTER Schedule_Id;
+
+ALTER TABLE schedule ADD  Status varchar(10) AFTER Schedule_Name;
 
 ALTER TABLE schedule ADD  Location varchar(200) AFTER Alert;
 
