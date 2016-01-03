@@ -45,11 +45,13 @@ class TaskHelper Extends Resource
 	
 	
 	// to insert a new taskhelper
+	// Status --- "A" (Assigned - default); "C" (Confirmed); "D"(Denied)
 	// 09/08/2015
 	Protected function insert_taskhelper($taskhelperid, $taskhelper) {
 		$ownerid = $taskhelper['ownerid'];
 		$taskid = $taskhelper['taskid'];
 		$userid = $taskhelper['userid'];
+		$eventid = $taskhelper['eventid'];
 		$status = $taskhelper['status'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
@@ -61,8 +63,8 @@ class TaskHelper Extends Resource
 	    }
 		else {	
 			$queryinsert1 = "insert into taskhelper ".
-							 "(TaskHelper_Id,Task_Id,User_Id,Status, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
-							 "values('$taskhelperid','$taskid','$userid','$status','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
+							 "(TaskHelper_Id,Task_Id,User_Id,Schedule_Id, Status, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+							 "values('$taskhelperid','$taskid','$userid', '$eventid','$status','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
 							
 			$result = mysqli_query($dbc,$queryinsert1);
 			if ($result !== TRUE) {
@@ -82,6 +84,7 @@ class TaskHelper Extends Resource
 		$taskhelpera = array(
 			'userid' => 'Task_Id',
 			'taskid' => 'User_Id',
+			'eventid' => 'Schedule_Id',
 			'status' => 'Status'
 		);
 	
