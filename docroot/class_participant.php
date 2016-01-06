@@ -49,19 +49,76 @@ class Participant Extends Resource
 		$data->close();
 		mysqli_close($dbc);
 	}
+	
 	/*
-	 * this is to modify a participant including user's name, mobile but not email(it's unique) and they are all part of user object
+	 * Insert a user into a community
+	 * 11/06/2015 to support backbone 
+	 * If the participant doesn't exist, insert it to the participant table
+	 */
+	Protected function insert_participant($participantid, $body_param) {
+		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
+		
+		$ownerid = $body_param['ownerid'];
+		$communityid = $body_param['communityid'];
+		$profile = $body_param['profile'];
+		$userid = $body_param['userid'];
+		$username = $body_param['username'];
+		$mobile = $body_param['mobile'];
+		$userrole = $body_param['userrole'];
+		
+		$query = "SELECT Is_Deleted isdeleted FROM participant WHERE Service_Id = '$communityid' and User_Id = '$userid' LIMIT 1";
+		$data = mysqli_query($dbc, $query) or die(mysqli_error());
+	    $result = mysqli_fetch_assoc($data);
+		if (mysqli_num_rows($data)== 1 and $result['isdeleted'] == 0) {
+			header('HTTP/1.0 201 This participant exists already', true, 201);
+			$data2 = json_encode(array('code'=> 201, 'message' => 'This participant exists already'));
+			echo $data2;
+			exit;	
+		}
+		else {
+		    if (mysqli_num_rows($data)== 0) {
+				$queryinsert1 = "insert into participant".
+						 " (Participant_Id, Service_Id, User_Id, User_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
+						 "values('$participantid', '$communityid','$userid', '$userrole',0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
+			}
+			else if ($result['isdeleted'] == 1) {
+				$queryinsert1 = "update participant ".
+						 " set Is_Deleted = 0, User_Role = '$userrole', Last_Modified_Id = '$ownerid', Last_Modified = UTC_TIMESTAMP ".
+						 " where Service_Id = '$communityid' and User_Id = '$userid' ";
+			}
+			
+			$result = mysqli_query($dbc,$queryinsert1);
+			if ($result !== TRUE) {
+				header('HTTP/1.0 203 failed to inert shared members', true, 203);
+				$data2 = json_encode(array('code'=> 203, 'message' => 'failed to inert participant'));
+				echo $data2;
+				exit;							
+			}
+			
+			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+			echo $data2;			
+		}
+		
+		mysqli_free_result($data);
+		mysqli_close($dbc);
+	}
+	
+	
+	/*
+	 *  This is to modify a participant including user's name, mobile but not email(it's unique) and they are all part of user object
+	 *  We deal with two tables: user and participant
 	 *  11/06/2015
 	 */
-	Protected function update($participantid, $ownerid, $participant_parms) {
+	Protected function update_participant($participantid, $ownerid, $participant_parms) {
 		$username = $participant_parms['username'];
 		$communityid = $participant_parms['communityid'];
 		//$profile= $participant_parms['profile'];
 		$mobile = $participant_parms['mobile'];
+		$userid = $participant_parms['userid'];
 		$userrole = $participant_parms['userrole'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM participant WHERE User_Id = '$participantid' and Service_Id = $communityid and Is_Deleted = 0";
+		$query = "SELECT * FROM participant WHERE Participant_Id = '$participantid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data) == 1) {
@@ -71,19 +128,20 @@ class Participant Extends Resource
 			// update this user in the user table
 			$queryupdate = "update user set ".
 						" User_Name = '$username', Mobile = '$mobile', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-						" where User_Id = '$participantid'";
+						" where User_Id = '$userid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
 				mysqli_rollback($dbc);
-				header('HTTP/1.0 202 This participant can\'t be changed', true, 202);
+				header('HTTP/1.0 202 This user can\'t be changed', true, 202);
 				exit;
 			}
 			else {
 				// second to change the user role in the participant table
 				$querydelete = "update participant set ".
-				               " User_Role = '$userrole', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-							   " WHERE Service_Id = '$communityid' and User_Id = '$participantid'";
+				               " User_Role = '$userrole', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid', ".
+							   " Service_Id = '$communityid', User_Id = '$userid' ".
+							   " WHERE Participant_Id = '$participantid' ";
 				
 				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
 				if ($result !== TRUE) {
@@ -103,95 +161,96 @@ class Participant Extends Resource
 		$data->close();
 		mysqli_close($dbc);
 	}
-	
-	
-	Protected function partial_update_participant($userid, $participant_arr) {
+	/**
+	 *   This is to support PATCH HTTP Method
+	 */
+	Protected function partial_update_participant($participantid, $participant_arr) {
 		// table for participant, which including user information
-		$eventa = array(
-			'username' => 'Schedule_Name',
-			'mobile' => 'Description',
-			'userrole' => 'Start_DateTime'
+		$usera = array(
+			'username' => 'User_Name',
+			'mobile' => 'Mobile'
 		);
 		
-			$ownerid = $event_arr['ownerid'];
-        $data = array();		
-        foreach($event_arr as $key => $value) {
-			foreach($eventa as $keya => $valuea) {
+		$participanta = array(
+			'userrole' => 'User_Role',
+		);
+		
+	    $ownerid = $participant_arr['ownerid'];
+		// TBD: do we need to have this anyway???
+		$userid  = $participant_arr['userid'];
+		// for user table
+        $udata = array();		
+        foreach($participant_arr as $key => $value) {
+			foreach($usera as $keya => $valuea) {
 				if ($key == $keya) {
-					$data[$valuea] = $value;
+					$udata[$valuea] = $value;
 					break;
 				}
 			}
 		}
-		$where = "Schedule_Id = '$eventid' ";
-		$table = "schedule";
+		$uwhere = "User_Id = '$userid' ";
+		$utable = "user";
+		// for participant table
+		$pdata = array();		
+        foreach($participant_arr as $key => $value) {
+			foreach($participanta as $keya => $valuea) {
+				if ($key == $keya) {
+					$pdata[$valuea] = $value;
+					break;
+				}
+			}
+		}
+		$pwhere = "Participant_Id = '$participantid' ";
+		$ptable = "participant";
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		mysqli_autocommit($dbc, FALSE);
 		
-		try {
-			// update the task table
-			$query2 = build_sql_update($table, $data, $where, $ownerid);
+		if ($udata != null) {
+			// update the user table
+			$query2 = build_sql_update($utable, $udata, $uwhere, $ownerid);
 			$result1 = mysqli_query($dbc, $query2);
 			
-		}
-		catch (Exception $e) {
-			header('HTTP/1.0 201 Update failed', true, 202);		
+			if ($result1 !== TRUE) {
+				// if error, roll back transaction
+				mysqli_rollback($dbc);
+				header('HTTP/1.0 202 Can not update user table', true, 202);
+				exit;
+			}
 		}
 		
+		if ($pdata != null) {
+			// update the participant table
+			$query2 = build_sql_update($ptable, $pdata, $pwhere, $ownerid);
+			$result1 = mysqli_query($dbc, $query2);
+			echo $query2;
+			if ($result1 !== TRUE) {
+				// if error, roll back transaction
+				mysqli_rollback($dbc);
+				header('HTTP/1.0 203 Can not update participant table', true, 203);
+				exit;
+			}
+		}
+		mysqli_commit($dbc);
 		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
 		echo $data2;
 		mysqli_close($dbc);
-		
-		
-		$membername = $member_parms['membername'];
-		$email= $member_parms['email'];
-		$mobile = $member_parms['mobile'];
-		
-		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM member WHERE Member_Id = '$memberid'";
-        $data = mysqli_query($dbc, $query) or die(mysqli_error());
-		
-        if (mysqli_num_rows($data) == 1) {
-		    // Member exists and go ahead to update it
-		
-			$timestamp = date('Y-m-d H:i:s');
-			$queryupdate = "update member set ".
-						"Member_Name = '$membername', Member_Email = '$email', Mobile_Number = '$mobile', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-						" where Member_Id = '$memberid'";
-			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
-			if ($result !== TRUE) {
-				// if error, roll back transaction
-				header('HTTP/1.0 201 This member can not be updated', true, 201);
-				exit;
-			}
-			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
-			//echo json_encode($data2);
-			echo $data2;
-			
-			
-		}
-		else {
-			header('HTTP/1.0 202 This member doesn\'t exist', true, 202);
-		}
-		$data->close();
-		mysqli_close($dbc);
 	}
 	
-	Protected function pdelete($memberid) {
+	Protected function pdelete($participantid) {
 	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM member WHERE Member_Id = '$memberid' and Is_Deleted = 0";
+		$query = "SELECT * FROM participant WHERE Participant_Id = '$participantid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data)==0) {
-			header('HTTP/1.0 201 This member doesn\'t exist', true, 201);
+			header('HTTP/1.0 201 This participant doesn\'t exist', true, 201);
 	    }
 		else {
-			// Delete this member by setting the flag Is_Deleted to 1
-			$timestamp = date('Y-m-d H:i:s');
-			$queryupdate = "update member set ".
+			// Delete this participant by setting the flag Is_Deleted to 1
+			$queryupdate = "update participant set ".
 						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP() ".
-						" where Member_Id = '$memberid'";
+						" where Participant_Id = '$participantid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
@@ -200,7 +259,6 @@ class Participant Extends Resource
 				exit;
 			}
 			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
-		    //echo json_encode($data2);
 			echo $data2;
 			
 		}
@@ -279,7 +337,8 @@ class Participant Extends Resource
 
 	// This is the API to add a new participant to the server if it doesn't exist
 	// POST http://servicescheduler.net/participant
-    public function post($request) {
+    /**
+	public function post($request) {
 		$parameters1 = array();
       
 		if ($request->body_parameters ['participant']) {
@@ -291,6 +350,21 @@ class Participant Extends Resource
 		$this->insert($request->body_parameters['ownerid'], $parameters1);  
     }
 	
+	**/
+	// this is to support backbone 
+    // POST http://[domain name]/participant	
+	public function post($request) {
+		$parameters1 = array();
+		header('Content-Type: application/json; charset=utf8');
+		
+		$lastElement = end($request->url_elements);
+		reset($request->url_elements);
+		if ($lastElement == "participant") {
+			$participantid = $request->body_parameters['participantid'];
+			$this->insert_participant($participantid, $request->body_parameters);
+		}  
+    }
+	
 	// method to update a participant in the community
 	// Participant is the same as user except it has userrole 
 	// PUT http://[Domain Name]/participant/123
@@ -300,7 +374,7 @@ class Participant Extends Resource
         $participantid = end($request->url_elements);
 		reset($request->url_elements);
 		header('Content-Type: application/json; charset=utf8');
-		$this->update($participantid, $request->body_parameters['ownerid'], $request->body_parameters);
+		$this->update_participant($participantid, $request->body_parameters['ownerid'], $request->body_parameters);
     }
 	
 	// partially update participant's profile and role
@@ -314,20 +388,20 @@ class Participant Extends Resource
 		
 		if ($last2Element == "participant") {
 			$participant_arr = $request->body_parameters;
-			$userid = $lastElement;
-			$this->partial_update_participant($userid, $participant_arr);
+			$participantid = $lastElement;
+			$this->partial_update_participant($participantid, $participant_arr);
 		}	
 	}
 	
 	/**
-	   There is no body in the DELETE HTTP Method
+	  * It just deletes a participant from a community
 	**/
 	public function delete($request) {
 		 // logic to handle an HTTP PUT request goes here
-		$memberid = end($request->url_elements);
+		$participantid = end($request->url_elements);
 		reset($request->url_elements);
 		header('Content-Type: application/json; charset=utf8');
-		$this->pdelete($memberid);
+		$this->pdelete($participantid);
     }
 
 }
