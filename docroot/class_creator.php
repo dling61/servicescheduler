@@ -346,9 +346,9 @@ class Creator Extends Resource
 		$extension = $body_parms['extension'];
 		$imagedata = $body_parms['data'];
 		$data = base64_decode($imagedata);
-        
+      
 		$im = imagecreatefromstring($data);
-		if ($im !== false) {
+		if ($im !== false &!empty($extension) & !empty($ownerid)) {
 			// $file_location = 'c:\localweb' . '\\';
 			$fileName = FILE_LOCATION . $ownerid . '.' . $extension;
 		    //imagepng($im, FILE_LOCATION . $ownerid . '.' . $extension, 0, NULL);
@@ -356,23 +356,6 @@ class Creator Extends Resource
 			imagepng($im, $fileName, 0, NULL);
 			// frees image from memory
 			imagedestroy($im);
-			/** We will resize the image on client side using javaScript
-			list($width, $height) = getimagesize($tmpFile);
-			if ($width == null && $height == null) {
-				header('X-PHP-Response-Code: 202', true, 202);
-				echo json_encode(array('error message'=>'Image is not valid'));
-				return;
-			}
-			// resize if necessary
-			if ($width >= 60 && $height >= 61) {
-				$image = new Imagick($tmpFile);
-				$image->thumbnailImage(60, 61);
-				$image->writeImage($fileName);
-			}
-			else {
-				move_uploaded_file($tmpFile, $fileName);
-			}
-			***/
 		}
 		else {
 			header('HTTP/1.0 202 Error in images', true, 202);
