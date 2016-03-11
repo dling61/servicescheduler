@@ -87,7 +87,7 @@ CREATE PROCEDURE `GENERATE_EVENTS`(BASE_EVENT_ID INT,
 BEGIN
 Declare repeat_setting varchar(500);
 Declare startTime, endTime time;
-Declare startDate, endDate date;
+Declare fromDate, toDate date;
 DECLARE n, i int;
 DECLARE BY_Day varchar(500);
 DECLARE LOOP_int int;
@@ -97,11 +97,11 @@ Select Repeat_Interval into repeat_setting from repeatschedule where RSchedule_I
 drop table if exists temp_repeate_setting;
 call SPLIT_REPEATE_SETTING(repeat_setting);
 
-Select From_Date,To_Date into startDate, endDate from repeatschedule where RSchedule_Id = repeatschedule_id;
+Select From_Date,To_Date into fromDate, toDate from repeatschedule where RSchedule_Id = repeatschedule_id;
 Select REvent_StartTime, REvent_EndTime into startTime, endTime from baseevent where REvent_Id = base_event_id;
 
-if now() > startDate then# check start time
-	SET startDate = now();
+if now() > fromDate then# check start time
+	SET fromDate = now();
 end if;
 
 Select t.BY_DAY, t.inter into by_day, i from temp_REPEATE_SETTING t;#should only have one row more setting to be configured
@@ -114,8 +114,8 @@ SET i = i * 7;
 insert into debug values(i);
 
 while LOOP_int < n DO
-	SET LOOP_DATE = getNextDateOfWeekDay(startDate, SPLIT_STRING(by_day,',',LOOP_int+1));
-	While LOOP_DATE < endDate DO
+	SET LOOP_DATE = getNextDateOfWeekDay(fromDate, SPLIT_STRING(by_day,',',LOOP_int+1));
+	While LOOP_DATE < toDate DO
 		insert into event(
         Event_Id,Event_Name,Service_Id,
         Tz_Id,Location,`Host`,
@@ -127,7 +127,8 @@ while LOOP_int < n DO
         be.REvent_Tz_Id, be.REvent_Location, be.REvent_Host,
         be.Revent_Id, rs.RSchedule_Id, 
         addtime(LOOP_DATE, startTime), addtime(LOOP_DATE , endTime),'',
-        be.Creator_Id,'0',now(),now(),be.Creator_Id from baseevent be, repeatschedule rs, event e;
+        be.Creator_Id,'0',now(),now(),be.Creator_Id from baseevent be, repeatschedule rs, event e 
+        where rs.RSchedule_Id = repeatschedule_id and be.REvent_Id = BASE_EVENT_ID;
         SET LOOP_DATE = DATE_ADD(LOOP_DATE, interval i day);
     END while;
     Set LOOP_int = LOOP_int + 1;
