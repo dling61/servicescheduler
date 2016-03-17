@@ -1,4 +1,6 @@
-
+--
+-- this is relationship table
+--
 
 CREATE TABLE IF NOT EXISTS `groupparticipant` (
   `PGroup_Id` int(11) NOT NULL,
@@ -7,5 +9,6 @@ CREATE TABLE IF NOT EXISTS `groupparticipant` (
   `Creator_Id` int(11) NOT NULL,
   `Created_Time` datetime NOT NULL,
   `Last_Modified` datetime NOT NULL,
-  `Last_Modified_Id` int(11) NOT NULL
+  `Last_Modified_Id` int(11) NOT NULL,
+  PRIMARY KEY (PGroup_Id)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
