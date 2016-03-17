@@ -14,7 +14,7 @@ class Community Extends Resource
 	
 	//protected $lastid;
 	
-	// create a new service and insert the creator to the participant table
+	// create a new community and insert the creator to the participant table
 	// 7/17/2015 --- Change the request body to one list of elements
 	Protected function insert($community_parms) {
 	
@@ -23,18 +23,21 @@ class Community Extends Resource
 		$communityid = $community_parms['communityid'];
 		$communityname = $community_parms['communityname'];
 		$description = $community_parms['desp'];
-	   
-		$query = "SELECT Service_Id FROM service WHERE Service_Id = $communityid";
+		// participantid -- this is needed to insert a participant into the participant table as the default participant
+	    $participantid = $community_parms['participantid'];
+		
+		$query = "SELECT Community_Id FROM community WHERE Community_Id = $communityid";
         $data = mysqli_query($dbc, $query);
 		
         if (mysqli_num_rows($data)==1) {
 		    // community already exists
 			header('HTTP/1.0 201 This community exists already', true, 201);
+			exit;
 	    }
 		else {
 			// Insert this community if no exists
-			$queryinsert = "INSERT INTO service ".
-								"(Service_Id,Service_Name,Description,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+			$queryinsert = "INSERT INTO community ".
+								"(Community_Id,Community_Name,Description,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
 								" values('$communityid','$communityname','$description','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";
 			
 			$result = mysqli_query($dbc,$queryinsert) or die("Error is: \n ".mysqli_error($dbc));
@@ -45,7 +48,7 @@ class Community Extends Resource
 			}
 			
 			// insert the creator to the community if it doesn't exist
-			$this->insert_creator($ownerid, $communityid);
+			$this->insert_creator($ownerid, $communityid, $participantid);
 			
 			$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
             echo $data2;			
@@ -61,14 +64,14 @@ class Community Extends Resource
 		$description= $community_parms['desp'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM service WHERE Service_Id = '$communityid'";
+		$query = "SELECT * FROM community WHERE Community_Id = '$communityid'";
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 	
         if (mysqli_num_rows($data)==1) {
 		    // community exists and go ahead to update it
-			$queryupdate = "update service set ".
-						"Service_Name = '$communityname', Description = '$description', Last_Modified = UTC_TIMESTAMP(),Last_Modified_Id = '$ownerid' ".
-						"where Service_Id = '$communityid'";
+			$queryupdate = "update community set ".
+						"Community_Name = '$communityname', Description = '$description', Last_Modified = UTC_TIMESTAMP(),Last_Modified_Id = '$ownerid' ".
+						"where Community_Id = '$communityid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
@@ -94,14 +97,14 @@ class Community Extends Resource
 		$userrole= $body_parms['userrole'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM participant WHERE Service_Id = '$communityid' and User_Id = '$userid' and Is_Deleted = 0 ";
+		$query = "SELECT * FROM participant WHERE Community_Id = '$communityid' and User_Id = '$userid' and Is_Deleted = 0 ";
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
         if (mysqli_num_rows($data)==1) {
 		    // shared member exists and go ahead to update it
 			$queryupdate = "update participant set ".
 						"User_Role = '$userrole', Last_Modified = UTC_TIMESTAMP, Last_Modified_Id = '$ownerid'".
-						"WHERE Service_Id = '$communityid' and User_Id = '$userid'";
+						"WHERE Community_Id = '$communityid' and User_Id = '$userid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
@@ -122,12 +125,13 @@ class Community Extends Resource
 	}
 	
 	// delete a community
+	// 03/05/2016  We only soft delete a community without touching event/task/participants
 	Protected function pdelete($communityid, $ownerid) {
 	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
 		// only owner can delete a community
-		$query = "SELECT * FROM service WHERE Service_Id = '$communityid' and Creator_id = '$ownerid' and Is_Deleted = 0";
+		$query = "SELECT * FROM community WHERE Community_Id = '$communityid' and Creator_id = '$ownerid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data)==0) {
@@ -135,54 +139,18 @@ class Community Extends Resource
 			exit;
 	    }
 		else {
-			// community exists and go ahead to update it
-			// two steps commit
-			mysqli_autocommit($dbc, FALSE);
-	
+		
 			// Delete this community by setting the flag Is_Deleted to 1
-			$queryupdate = "update service set ".
+			$queryupdate = "update community set ".
 						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid'".
-						" where Service_Id = '$communityid'";
+						" where Community_Id = '$communityid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
 				mysqli_rollback($dbc);
 				header('HTTP/1.0 202 This community can\'t be deleted', true, 202);
 				exit;
-			}
-			else {
-			    // first to check if there are some schedules associated with this community
-				$query = "SELECT * FROM schedule WHERE Service_Id = '$communityid' and Is_Deleted = 0";
-				$data = mysqli_query($dbc, $query) or die(mysqli_error());
-				if (mysqli_num_rows($data) != 0) {
-					// second to delete the existing relationship
-					$queryupdate = "update schedule set ".
-							" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-							" where Service_Id = '$communityid'";
-			
-					$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
-					if ($result !== TRUE) {
-						// if error, roll back transaction
-						mysqli_rollback($dbc);
-						header('HTTP/1.0 203 Failed to delete schedule', true, 203);
-						exit;
-					}
-				}
-				
-				// always delete sharedmembers since at least the creator is on the sharedmember table   
-				$querydelete = "update sharedmember set ".
-					" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-					" where Service_Id = '$communityid'";
-				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
-				if ($result !== TRUE) {
-					// if error, roll back transaction
-					mysqli_rollback($dbc);
-					header('HTTP/1.0 204 Failed to delete sharedrole in sharedmember', true, 204);
-					exit;
-				}
-				mysqli_commit($dbc);
-										
-			}	
+			}		   
 		}
 		
 		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
@@ -196,7 +164,7 @@ class Community Extends Resource
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
-		$query = "SELECT * FROM participant WHERE Service_Id = '$communityid' and User_Id = '$userid' and Is_Deleted = 0";
+		$query = "SELECT * FROM participant WHERE Community_Id = '$communityid' and User_Id = '$userid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data)==0) {
@@ -207,7 +175,7 @@ class Community Extends Resource
 			// Delete this participant by setting the flag Is_Deleted to 1
 			$update = "update participant set ".
 						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-						" where Service_Id = '$communityid' and User_Id = '$userid'";
+						" where Community_Id = '$communityid' and User_Id = '$userid'";
 			$result = mysqli_query($dbc,$update) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				header('HTTP/1.0 204 Failed to delete shared member', true, 204);
@@ -218,20 +186,27 @@ class Community Extends Resource
 		}
 	}
 	
-	// This is a function to get the latest Ids for this user
-	// So this user can continue to generate valid Ids
-	// Not being used:. This function was moved to the login API (03/29/2015)
+	// This is a function to get the communities a user is participating 
+	//  03/05/2016 Move the highest mark IDs to the login function
 	Protected function pgetlastupdate($ownerid, $lastupdatetime) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
-	
-		$query = " SELECT distinct s.Service_Id serviceid ,s.Service_Name servicename,s.Description descp ".
+	    /**
+		$query = " SELECT distinct s.Community_Id serviceid ,s.Community_Name servicename,s.Description descp ".
                  " ,s.Creator_Id creatorid, ".
                  " if (s.Is_Deleted = 1 or o.Is_Deleted = 1, 1, 0) isdeleted,s.Created_Time createdtime,s.Last_Modified lastmodified,o.User_Role userrole ".
-                 " from service s, participant o ".
-                 " where s.Service_Id = o.Service_Id ".
+                 " from community s, participant o ".
+                 " where s.Community_Id = o.Community_Id ".
                  " and o.User_Id = '$ownerid' ". 
                  " and ((o.Last_Modified > '$lastupdatetime') or (s.Last_Modified > '$lastupdatetime'))";
-	
+		***/
+		$query = " SELECT distinct s.Community_Id communityid ,s.Community_Name communityname,s.Description descp ".
+                 " ,s.Creator_Id creatorid, ".
+                 " if (s.Is_Deleted = 1 or o.Is_Deleted = 1, 1, 0) isdeleted,s.Created_Time createdtime,s.Last_Modified lastmodified,o.User_Role userrole ".
+                 " from community s, participant o ".
+                 " where s.Community_Id = o.Community_Id ".
+                 " and o.User_Id = '$ownerid' ". 
+                 " and ((o.Last_Modified > '$lastupdatetime') or (s.Last_Modified > '$lastupdatetime'))";
+		
 		$data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
 		$return_arr = array();
@@ -245,13 +220,13 @@ class Community Extends Resource
 			   $isdeleted = $row0['isdeleted'];
 				// if it's deleted, just add it to "dservices"
 			   if ($isdeleted == 1) {
-				 $serviceid_arr[$j] = $row0['serviceid'];
+				 $serviceid_arr[$j] = $row0['communityid'];
 				 $j++;
 			   }
 			   else {
 				   $one_arr = array();
-				   $one_arr['id'] = $row0['serviceid'];
-				   $one_arr['communityname'] = $row0['servicename'];
+				   $one_arr['id'] = $row0['communityid'];
+				   $one_arr['communityname'] = $row0['communityname'];
 				   $one_arr['desp'] = $row0['descp'];
 				   $one_arr['creatorid'] = $row0['creatorid'];
 				   $one_arr['createdtime'] = $row0['createdtime'];
@@ -286,11 +261,11 @@ class Community Extends Resource
 	
 		// call a stored procedure to get the services to be returned to caller
 		$query = "SELECT sm.Is_Deleted isdeleted, sm.User_Id userid, m.Email useremail, m.User_Name username, m.Mobile mobilenumber, m.Profile userprofile, ".
-		    " sm.Creator_Id creatorid, sm.Service_Id communityid, sm.Created_Time createdtime, sm.Last_Modified lastmodified, sm.User_Role userrole ".
+		    " sm.Creator_Id creatorid, sm.Community_Id communityid, sm.Created_Time createdtime, sm.Last_Modified lastmodified, sm.User_Role userrole ".
  		    " FROM participant sm, user m ".
-			"where sm.User_Id = m.User_Id and sm.Service_Id = '$communityid' and ".
+			"where sm.User_Id = m.User_Id and sm.Community_Id = '$communityid' and ".
      		"(sm.Last_Modified > '$lastupdatetime' or m.Last_Modified > '$lastupdatetime')";
-			
+		
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc)); 
 		
 		$return_arr = array();
@@ -413,7 +388,7 @@ class Community Extends Resource
 		foreach ($pgroup_arr as &$svalue) {
 			$pgroupid = $svalue['participantgroupid'];
 			
-			// get the list of memberid and confirm associated with the schedule ID
+			// get the list of memberid and confirm associated with the event ID
 			//$members_str = '';
 			$user_str = array();
 			$i = 0;
@@ -424,7 +399,7 @@ class Community Extends Resource
 				$i++;
 			  }
 			}
-			//insert members associated with the schedule into the schedules_arr TBD
+			//insert members associated with the event into the schedules_arr TBD
 			$svalue['user'] = $user_str;
 		}
 		unset($svalue);
@@ -532,20 +507,16 @@ class Community Extends Resource
 						// fourth result set for base event
 						$fourth_arr = array();
 						$fourth_arr['beventid'] = $row['beventid'];
-						$fourth_arr['eventname'] = $row['eventname'];
-						//$fourth['desp'] = $row['desp'];
-						$fourth_arr['starttime'] = $row['starttime'];
-						$fourth_arr['endtime'] = $row['endtime'];
-						$fourth_arr['tzid'] = $row['tzid'];
-						$fourth_arr['starttime'] = $row['starttime'];
-						$fourth_arr['endtime'] = $row['endtime'];
-						$fourth_arr['tzid'] = $row['tzid'];
-						$fourth_arr['location'] = $row['location'];
-						$fourth_arr['host'] = $row['host'];
-						$fourth_arr['frequency'] = $row['frequency'];
-						$fourth_arr['interval'] = $row['binterval'];
-						$fourth_arr['from'] = $row['bfrom'];
-						$fourth_arr['to'] = $row['bto'];
+						$fourth_arr['beventname'] = $row['beventname'];
+						$fourth_arr['bstarttime'] = $row['starttime'];
+						$fourth_arr['bendtime'] = $row['endtime'];
+						$fourth_arr['btzid'] = $row['tzid'];
+						$fourth_arr['blocation'] = $row['location'];
+						$fourth_arr['bhost'] = $row['host'];
+						//$fourth_arr['frequency'] = $row['frequency'];
+						//$fourth_arr['interval'] = $row['binterval'];
+						//$fourth_arr['from'] = $row['bfrom'];
+						//$fourth_arr['to'] = $row['bto'];
 						$bevent_arr[$m] = $fourth_arr;
 						$m++;
 					}
@@ -658,7 +629,7 @@ class Community Extends Resource
 		$userid = $body_param['id'];
 		$userrole = $body_param['userrole'];
 		
-		$query = "SELECT Is_Deleted isdeleted FROM participant WHERE Service_Id = '$serviceid' and User_Id = '$userid' LIMIT 1";
+		$query = "SELECT Is_Deleted isdeleted FROM participant WHERE Community_Id = '$serviceid' and User_Id = '$userid' LIMIT 1";
 		$data = mysqli_query($dbc, $query) or die(mysqli_error());
 	    $result = mysqli_fetch_assoc($data);
 		if (mysqli_num_rows($data)== 1 and $result['isdeleted'] == 0) {
@@ -670,13 +641,13 @@ class Community Extends Resource
 		else {
 		    if (mysqli_num_rows($data)== 0) {
 				$queryinsert1 = "insert into participant".
-						 " (Service_Id, User_Id, User_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
+						 " (Community_Id, User_Id, User_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
 						 "values('$serviceid','$userid', '$userrole',0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
 			}
 			else if ($result['isdeleted'] == 1) {
 				$queryinsert1 = "update participant ".
 						 " set Is_Deleted = 0, User_Role = '$userrole', Last_Modified_Id = '$ownerid', Last_Modified = UTC_TIMESTAMP ".
-						 " where Service_Id = '$serviceid' and User_Id = '$userid' ";
+						 " where Community_Id = '$serviceid' and User_Id = '$userid' ";
 			}
 			$result = mysqli_query($dbc,$queryinsert1);
 			if ($result !== TRUE) {
@@ -733,7 +704,7 @@ class Community Extends Resource
 							logserveronce("Register","POST", $email, "");
 					$data2->close();
 					// 2. add it to the participant
-					$query = "SELECT Is_Deleted isdeleted FROM participant WHERE Service_Id = '$serviceid' and User_Id = '$userid' LIMIT 1";
+					$query = "SELECT Is_Deleted isdeleted FROM participant WHERE Community_Id = '$serviceid' and User_Id = '$userid' LIMIT 1";
 					$data = mysqli_query($dbc, $query) or die(mysqli_error());
 					$result = mysqli_fetch_assoc($data);
 					if (mysqli_num_rows($data)== 1 and $result['isdeleted'] == 0) {
@@ -743,13 +714,13 @@ class Community Extends Resource
 					else {
 						if (mysqli_num_rows($data)== 0) {
 							$queryinsert1 = "insert into participant".
-									 " (Service_Id, User_Id, User_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
+									 " (Community_Id, User_Id, User_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
 									 "values('$serviceid','$userid', '$userrole',0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
 						}
 						else if ($result['isdeleted'] == 1) {
 							$queryinsert1 = "update participant ".
 									 " set Is_Deleted = 0, User_Role = '$userrole', Last_Modified_Id = '$ownerid', Last_Modified = UTC_TIMESTAMP ".
-									 " where Service_Id = '$serviceid' and Member_Id = '$userid' ";
+									 " where Community_Id = '$serviceid' and Member_Id = '$userid' ";
 						}
 						$result = mysqli_query($dbc,$queryinsert1);
 						echo json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time()), 'id' => $userid));			
@@ -799,7 +770,7 @@ class Community Extends Resource
 				mysqli_autocommit($dbc, FALSE);
 				// Insert this participant group if no exists
 				$queryinsert = "INSERT INTO participantgroup ".
-									"(PGroup_Id,PGroup_Name,Service_Id,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+									"(PGroup_Id,PGroup_Name,Community_Id,Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
 									" values('$participantgroupid','$participantgroupname','$serviceid','$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(), '$ownerid')";
 				
 				$result = mysqli_query($dbc,$queryinsert) or die("Error is: \n ".mysqli_error($dbc));
@@ -843,7 +814,7 @@ class Community Extends Resource
 	public function get($request) {
         $ownerid = $request->parameters['ownerid'];
 		$lastupdatetime = urldecode($request->parameters['lastupdatetime']);
-	   
+	    
 		header('Content-Type: application/json; charset=utf8');
 		$lastElement = end($request->url_elements);
 		reset($request->url_elements);
@@ -854,8 +825,8 @@ class Community Extends Resource
 		}
 		else if ($lastElement == "participant") {
 			// handle participant
-			$serviceid  = $request->url_elements[count($request->url_elements)-2];
-			$this->pgetlastupdate_sm($serviceid, $ownerid, $lastupdatetime);
+			$communityid  = $request->url_elements[count($request->url_elements)-2];
+			$this->pgetlastupdate_sm($communityid, $ownerid, $lastupdatetime);
 		} 
 		else if ($lastElement == "event") {
 			$communityid  = $request->url_elements[count($request->url_elements)-2];
@@ -910,7 +881,7 @@ class Community Extends Resource
 		
     }
 	
-	// update a service with the service Id and update a role shared with activity
+	// update a community with the community Id and update a role shared with activity
 	// 1. PUT http://[api_domain_name]/community/1234
 	// 2. PUT http://[api_domain_name]/community/1234/participant
 	// 3. PUT http://[api_domain_name]/community/1234/participant/1111
@@ -978,24 +949,20 @@ class Community Extends Resource
     }
 	
 	// Insert a participant if it doesn't exist in the community 
-	Protected function insert_creator($ownerid, $communityid) {
+	Protected function insert_creator($ownerid, $communityid, $participantid) {
 	
 	   $dbc1 = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
-       $query1 = "SELECT Email, User_Name, Mobile FROM user WHERE User_Id = $ownerid";
+       $query1 = "SELECT * FROM user WHERE User_Id = $ownerid";
 	   
 	   $data1 = mysqli_query($dbc1, $query1);
 		
 		if (mysqli_num_rows($data1)==1) {
 			$row1 = mysqli_fetch_array($data1);
 			
-			$email = $row1['Email'];
-			$membername = $row1['User_Name'];
-			$mobile = $row1['Mobile'];
-			
 			$queryinsert1 = "insert into participant".
-						 " (Service_Id, User_Id, User_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
-						 "values('$communityid','$ownerid', 0,0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
-			$result1 = mysqli_query($dbc1,$queryinsert1) or die("Error is: \n ".mysqli_error($dbc));
+						 " (Participant_Id, Community_Id, User_Id, User_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
+						 "values('$participantid','$communityid','$ownerid', 0,0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
+			$result1 = mysqli_query($dbc1,$queryinsert1) or die("Error is: \n ".mysqli_error($dbc1));
 			if ($result1 !== TRUE) {
 				// if error, roll back transaction
 				header('HTTP/1.0 202 Can not add the creator member', true, 202);

@@ -13,31 +13,31 @@ class BaseEvent Extends Resource
     }
 	protected $lastid;
 	
-	// create a new schedule and associated tasks
+	// create a new baseevent and associated tasks
 	// 05/14/2015
 	Protected function insert_base_event($event_parms) {
 		
 		$ownerid = $event_parms['ownerid'];
-		$reventid = $event_parms['reventid'];
-		$eventname = $event_parms['eventname'];
-		$starttime = $event_parms['starttime'];
-		$endtime = $event_parms['endtime'];
-		//$alert = $event_parms['alert'];
-		$tzid = $event_parms['tzid'];
-		$location = $event_parms['location'];
-		$host = $event_parms['host'];
+		$beventid = $event_parms['beventid'];
+		$eventname = $event_parms['beventname'];
+		$starttime = $event_parms['bstarttime'];
+		$endtime = $event_parms['bendtime'];
+		//$alert = $event_parms['balert'];
+		$tzid = $event_parms['btzid'];
+		$location = $event_parms['blocation'];
+		$host = $event_parms['bhost'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 	   
-	   	$query = "SELECT * FROM baseschedule WHERE REvent_Id = '$reventid'";
+	   	$query = "SELECT * FROM baseevent WHERE BEvent_Id = '$beventid'";
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
         if (mysqli_num_rows($data) == 0) {
 			try {
 				// start a transaction
-				$queryinsert = "INSERT INTO baseschedule ".
-									"(REvent_Id,REvent_Name,REvent_StartTime,REvent_EndTime,REvent_Location,REvent_Host, REvent_Tz_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
-									" values('$reventid','$eventname','$starttime','$endtime','$location', '$host','$tzid',".
+				$queryinsert = "INSERT INTO baseevent ".
+									"(BEvent_Id,BEvent_Name,BEvent_StartTime,BEvent_EndTime,BEvent_Location,BEvent_Host, BEvent_Tz_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+									" values('$beventid','$eventname','$starttime','$endtime','$location', '$host','$tzid',".
 									" '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(),'$ownerid')";
 		
 				$result = mysqli_query($dbc,$queryinsert);
@@ -62,12 +62,12 @@ class BaseEvent Extends Resource
 	/*
 	   This is to get a particular event
 	 */
-	Protected function pgetBaseEvent($reventid) {
+	Protected function pgetBaseEvent($beventid) {
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
-		$query = "SELECT REvent_Name name, REvent_StartTime starttime, REvent_EndTime endtime, REvent_Location location, ".
-		         " REvent_Host host, REvent_Tz_Id tzid ".
-				 " FROM baseschedule WHERE REvent_Id = '$reventid' and Is_Deleted = 0";
+		$query = "SELECT BEvent_id beventid, BEvent_Name name, BEvent_StartTime starttime, BEvent_EndTime endtime, BEvent_Location location, ".
+		         " BEvent_Host host, BEvent_Tz_Id tzid ".
+				 " FROM baseevent WHERE BEvent_Id = '$beventid' and Is_Deleted = 0";
       
 		$data = mysqli_query($dbc, $query) or die(mysqli_error());
 		if (mysqli_num_rows($data)==0) {
@@ -76,13 +76,13 @@ class BaseEvent Extends Resource
 		else {
 		    $row = mysqli_fetch_array($data);	
 			$one_arr = array();
-				  
-			$one_arr['name'] = $row['name'];
-			$one_arr['starttime'] = $row['starttime'];
-			$one_arr['endtime'] = $row['endtime'];
-			$one_arr['location'] = $row['location'];
-			$one_arr['host'] = $row['host'];
-			$one_arr['tzid'] = $row['tzid'];
+			$one_arr['beventid'] = $row['beventid'];  
+			$one_arr['beventname'] = $row['name'];
+			$one_arr['bstarttime'] = $row['starttime'];
+			$one_arr['bendtime'] = $row['endtime'];
+			$one_arr['blocation'] = $row['location'];
+			$one_arr['bhost'] = $row['host'];
+			$one_arr['btzid'] = $row['tzid'];
 					
 			$data2 = json_encode($one_arr);
 			echo $data2;
@@ -92,51 +92,35 @@ class BaseEvent Extends Resource
 	}
 	
 	/**
-	  This is to delete the schedule
+	  This is to delete the base event
 	**/
-	Protected function pdelete($scheduleid, $ownerid) {
-		
+	Protected function pdelete($beventid, $ownerid) {
+	
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
-		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$scheduleid' and Is_Deleted = 0";
+		$query = "SELECT * FROM baseevent WHERE BEvent_Id = '$beventid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
-		
+	
         if (mysqli_num_rows($data)==0) {
-			header('HTTP/1.0 201 This schedule doesn\'t exist and has been deleted', true, 201);
+			header('HTTP/1.0 201 This base event doesn\'t exist and has been deleted', true, 201);
 	    }
 		else {
-			// Serchdule exists and go ahead to update it
-			// two steps commit
-			mysqli_autocommit($dbc, FALSE);
+			// Base Event exists and go ahead to update it
 			// update this schedule by setting the flag Is_Deleted to 1
-			$queryupdate = "update schedule set ".
+			$queryupdate = "update baseevent set ".
 						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-						" where Schedule_Id = '$scheduleid'";
+						" where BEvent_Id = '$beventid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
 				mysqli_rollback($dbc);
-				header('HTTP/1.0 202 This schedule can\'t be deleted', true, 202);
+				header('HTTP/1.0 202 This baseevent can\'t be deleted', true, 202);
 				exit;
 			}
-			else {
-				// first to delete the existing relationship
-				$querydelete = "update onduty set ".
-				               " Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-							   " WHERE Schedule_Id = '$scheduleid'";
-				
-				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
-				if ($result !== TRUE) {
-					// if error, roll back transaction
-					mysqli_rollback($dbc);
-					header('HTTP/1.0 204 Failed to delete onduty', true, 204);
-					exit;
-				}
-				mysqli_commit($dbc);
-				$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
-				echo $data2;
-			}	
 		}
+		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
+		echo $data2;
+		
 		$data->close();
 		mysqli_close($dbc);
 	}
@@ -145,20 +129,20 @@ class BaseEvent Extends Resource
 	// this is to support patch update on base event
 	// 09/25/2015 Dongling API 1.5
 	// 
-	Protected function partial_update_event($reventid, $revent_arr) {
+	Protected function partial_update_event($beventid, $bevent_arr) {
 		// table for event
 		$reventa = array(
-			'eventname' => 'REvent_Name',
-			'starttime' => 'REvent_StartTime',
-			'endtime' => 'REvent_EndTime',
-			'tzid' => 'REvent_Tz_Id',
-			'location' => 'REvent_Location',
-			'host' => 'REvent_Host'
+			'beventname' => 'BEvent_Name',
+			'bstarttime' => 'BEvent_StartTime',
+			'bendtime' => 'BEvent_EndTime',
+			'btzid' => 'BEvent_Tz_Id',
+			'blocation' => 'BEvent_Location',
+			'bhost' => 'BEvent_Host'
 		);
 	
-		$ownerid = $revent_arr['ownerid'];
+		$ownerid = $bevent_arr['ownerid'];
         $data = array();		
-        foreach($revent_arr as $key => $value) {
+        foreach($bevent_arr as $key => $value) {
 			foreach($reventa as $keya => $valuea) {
 				if ($key == $keya) {
 					$data[$valuea] = $value;
@@ -167,8 +151,8 @@ class BaseEvent Extends Resource
 			}
 		}
 		
-		$where = "REvent_Id = '$reventid' ";
-		$table = "baseschedule";
+		$where = "BEvent_Id = '$beventid' ";
+		$table = "baseevent";
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
@@ -191,12 +175,13 @@ class BaseEvent Extends Resource
 	   Followings are the functions called from index.php
 	***/	
     public function get($request) {  
+	
+		header('Content-Type: application/json; charset=utf8');
 		$lastElement = end($request->url_elements);
 		reset($request->url_elements);
-        $reventid = $lastElement;
-		header('Content-Type: application/json; charset=utf8');
+        $beventid = $lastElement;
 		
-		$this->pgetBaseEvent($reventid);
+		$this->pgetBaseEvent($beventid);
     }
 
 	// This is the API for creating a base event for repeating events
@@ -221,7 +206,7 @@ class BaseEvent Extends Resource
 		
 		header('Content-Type: application/json; charset=utf8');
 		$last2Element = $request->url_elements[count($request->url_elements)-2];	
-		if ($last2Element == "event") {
+		if ($last2Element == "baseevent") {
 			if ($request->body_parameters['event']) {
 				foreach($request->body_parameters['event'] as $param_name => $param_value) {
 								$parameters1[$param_name] = $param_value;
@@ -240,10 +225,10 @@ class BaseEvent Extends Resource
 	public function delete($request) {
 	     // logic to handle an HTTP DELETE request goes here
 		header('Content-Type: application/json; charset=utf8');
-		$scheduleid = end($request->url_elements);
+		$beventid = end($request->url_elements);
 		reset($request->url_elements);
 		$ownerid = $request->parameters['ownerid'];
-		$this->pdelete($scheduleid, $ownerid);
+		$this->pdelete($beventid, $ownerid);
     }
 	
 	
@@ -258,9 +243,9 @@ class BaseEvent Extends Resource
 		reset($request->url_elements);
 		
 		if ($last2Element == "baseevent") {
-			$revent_arr = $request->body_parameters;
-			$reventid = $lastElement;
-			$this->partial_update_event($reventid, $revent_arr);
+			$bevent_arr = $request->body_parameters;
+			$beventid = $lastElement;
+			$this->partial_update_event($beventid, $bevent_arr);
 		}	
 	}
 	

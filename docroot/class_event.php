@@ -30,11 +30,12 @@ class Event Extends Resource
 		$location = $event_parms['location'];
 		$host = $event_parms['host'];
 		$status = $event_parms['status'];
+		$repeatscheduleid = $event_parms['repeatscheduleid'];
 		$beventid =  $event_parms['beventid'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!'); 
 	 
-		$query = "SELECT Schedule_Id FROM Schedule WHERE Schedule_Id = $eventid";
+		$query = "SELECT Event_Id FROM event WHERE Event_Id = $eventid";
         $data = mysqli_query($dbc, $query);
 		
         if (mysqli_num_rows($data) == 1) {
@@ -42,10 +43,10 @@ class Event Extends Resource
 	    }
 		else {	
 			// case #1 Repeating events -- first repeating event
-			// Create a base event in the baseschedule and the first table in the schedule table
-			$queryinsert = "INSERT INTO schedule ".
-									"(Schedule_Id,Schedule_Name,Service_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host, Status, REvent_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
-									" values('$eventid','$eventname','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', '$location', '$host', '$status', '$beventid',".
+			// Create a base event in the baseschedule and the first table in the event table
+			$queryinsert = "INSERT INTO event ".
+									"(Event_Id,Event_Name,Community_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host, Status, Repeat_Schedule_Id,BEvent_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+									" values('$eventid','$eventname','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', '$location', '$host', '$status','$repeatscheduleid', '$beventid',".
 									" '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(),'$ownerid')";
 			
 			$result = mysqli_query($dbc,$queryinsert);
@@ -61,8 +62,8 @@ class Event Extends Resource
 		mysqli_close($dbc);
 	}
 	
-	// create a new schedule and associated tasks
-	// 05/14/2015
+	// create a new event and associated tasks
+	// 05/14/2015  -- TBD
 	Protected function insert($ownerid, $communityid, $event_parms) {
 	    $task = array();
 		
@@ -75,17 +76,17 @@ class Event Extends Resource
 		$tzid = $event_parms['tzid'];
 		$location = $event_parms['location'];
 		$host = $event_parms['host'];
-		$reventid =  $event_parms['reventid'];
+		$beventid =  $event_parms['beventid'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 	   
 	    try {
 			// start a transaction
 			mysqli_autocommit($dbc, FALSE);
-			// Insert this schedule if no exists
-			$queryinsert = "INSERT INTO schedule ".
-								"(Schedule_Id,Schedule_Name,Service_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host, REvent_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
-								" values('$eventid','$eventname','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', '$location', '$host', '$reventid',".
+			// Insert this event if no exists
+			$queryinsert = "INSERT INTO event ".
+								"(Event_Id,Event_Name,Community_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host, BEvent_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+								" values('$eventid','$eventname','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', '$location', '$host', '$beventid',".
 								" '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(),'$ownerid')";
 			
 			$result = mysqli_query($dbc,$queryinsert);
@@ -93,7 +94,7 @@ class Event Extends Resource
 				throw new Exception(mysqli_error($dbc));
 			}
 			
-			// go ahead to insert tasks and assignment into schedule and taskassigned tables (API 1.5)
+			// go ahead to insert tasks and assignment into event and taskassigned tables (API 1.5)
 			if ($event_parms['task']) {
 				// get the task
 				foreach($event_parms['task'] as $task) {
@@ -104,7 +105,7 @@ class Event Extends Resource
 					$assignedgroupid = $task['assignedgroupid'];
 				  
 					$queryinsert1 = "insert into task ".
-							 "(Task_Id,Task_Name,Schedule_Id,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+							 "(Task_Id,Task_Name,Event_Id,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
 							 "values('$taskid','$taskname','$eventid','$assignallowed','$assignedgroupid','$desp','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
 							
 					$result = mysqli_query($dbc,$queryinsert1);
@@ -115,7 +116,7 @@ class Event Extends Resource
 					foreach($task['assignment'] as $assigned_id) {
 						// insert into the table "taskassigned"
 						$queryinsert2 = "insert into taskassigned".
-							"(Task_Id,User_Id,Schedule_Id,Confirm,Is_Deleted,Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+							"(Task_Id,User_Id,Event_Id,Confirm,Is_Deleted,Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
 							 "values('$taskid','$assigned_id','$eventid','0','0','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
 							 
 						$result = mysqli_query($dbc,$queryinsert2);
@@ -158,7 +159,7 @@ class Event Extends Resource
 	    }
 		else {	
 			$queryinsert1 = "insert into task ".
-							 "(Task_Id,Task_Name,Schedule_Id,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+							 "(Task_Id,Task_Name,Event_Id,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
 							 "values('$taskid','$taskname','$eventid','$assignallowed','$assignedgroupid','$desp','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
 							
 			$result = mysqli_query($dbc,$queryinsert1);
@@ -179,7 +180,7 @@ class Event Extends Resource
 		try {
 			// start a transaction
 			mysqli_autocommit($dbc, FALSE);
-			// go ahead to insert tasks and assignment into schedule and taskassigned tables (API 1.5)
+			// go ahead to insert tasks and assignment into event and taskassigned tables (API 1.5)
 			foreach($task_arr as $task) {
 				$taskid = $task['taskid'];
 				$desp =   $task['desp'];
@@ -188,7 +189,7 @@ class Event Extends Resource
 				$assignedgroupid = $task['assignedgroupid'];
 			  
 				$queryinsert1 = "insert into task ".
-						 "(Task_Id,Task_Name,Schedule_Id,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+						 "(Task_Id,Task_Name,Event_Id,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
 						 "values('$taskid','$taskname','$eventid','$assignallowed','$assignedgroupid','$desp','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
 						
 				$result = mysqli_query($dbc,$queryinsert1);
@@ -199,7 +200,7 @@ class Event Extends Resource
 				foreach($task['assignment'] as $assigned_id) {
 					// insert into the table "taskassigned"
 					$queryinsert2 = "insert into taskassigned".
-						"(Task_Id,User_Id,Schedule_Id,Confirm,Is_Deleted,Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+						"(Task_Id,User_Id,Event_Id,Confirm,Is_Deleted,Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
 						 "values('$taskid','$assigned_id','$eventid','0','0','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
 						 
 					$result = mysqli_query($dbc,$queryinsert2);
@@ -235,18 +236,19 @@ class Event Extends Resource
 		$startdatetime = $event_parms['startdatetime'];
 		$enddatetime = $event_parms['enddatetime'];
 		$status = $event_parms['status'];
+		$repeatscheduleid = $event_parms['repeatscheduleid'];
 		$beventid = $event_parms['beventid'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$eventid'";
+		$query = "SELECT * FROM event WHERE Event_Id = '$eventid'";
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
         if (mysqli_num_rows($data)==1) {
 		    // event exists and go ahead to update it
-			$queryupdate = "Update schedule set Tz_id = $tzid, Schedule_Name = '$eventname', Description = '$desp', Alert = $alert, ".
+			$queryupdate = "Update event set Tz_id = $tzid, Event_Name = '$eventname', Description = '$desp', Alert = $alert, ".
                            " Location = '$location', Host = '$host', Start_DateTime = UNIX_TIMESTAMP('$startdatetime'), End_DateTime = UNIX_TIMESTAMP('$enddatetime'),"	.
-                           " Status = '$status', REvent_id = $beventid ";					   
-			$queryupdate = $queryupdate . ", Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = " . $ownerid . " Where Schedule_Id = " .$eventid .";";
+                           " Repeat_Schedule_Id = '$repeatscheduleid', Status = '$status', BEvent_id = $beventid ";					   
+			$queryupdate = $queryupdate . ", Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = " . $ownerid . " Where Event_Id = " .$eventid .";";
 		    
 			try {
 				$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
@@ -271,12 +273,12 @@ class Event Extends Resource
 	//  This is to update the confirm status for a member
 	//  http://[domain name]/schedules/1234/onduty/1111
 	//
-	Protected function update_confirm($scheduleid, $memberid, $schedule_parms) {
+	Protected function update_confirm($eventid, $memberid, $schedule_parms) {
 		$ownerid = $schedule_parms['ownerid'];
 		$confirm = $schedule_parms['confirm'];
 	    
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
-		$query = "SELECT * FROM onduty WHERE Member_id = '$memberid' and Is_Deleted = 0 and schedule_id = '$scheduleid' ";
+		$query = "SELECT * FROM onduty WHERE Member_id = '$memberid' and Is_Deleted = 0 and event_Id = '$eventid' ";
         $data = mysqli_query($dbc, $query) or die("Error is: \n ".mysqli_error($dbc));
 		
         if (mysqli_num_rows($data)==1) {
@@ -286,7 +288,7 @@ class Event Extends Resource
 		
 			if (mysqli_num_rows($result)==1) {
 				$query2 = "Update onduty set confirm = '$confirm', last_Modified = UTC_TIMESTAMP(), last_modified_id = '$ownerid' ".
-					" where Member_id = '$memberid' and schedule_id = '$scheduleid'";
+					" where Member_id = '$memberid' and event_Id = '$eventid'";
 				$result1 = mysqli_query($dbc, $query2) or die("Error is: \n ".mysqli_error($dbc));
 			    
 				if ($result1 !== TRUE) {
@@ -311,38 +313,38 @@ class Event Extends Resource
 	}
 	
 	/**
-	  This is to delete the schedule
+	  This is to delete the event
 	**/
-	Protected function pdelete($scheduleid, $ownerid) {
+	Protected function pdelete($eventid, $ownerid) {
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
-		$query = "SELECT * FROM schedule WHERE Schedule_Id = '$scheduleid' and Is_Deleted = 0";
+		$query = "SELECT * FROM event WHERE Event_Id = '$eventid' and Is_Deleted = 0";
         $data = mysqli_query($dbc, $query) or die(mysqli_error());
 		
         if (mysqli_num_rows($data)==0) {
-			header('HTTP/1.0 201 This schedule doesn\'t exist and has been deleted', true, 201);
+			header('HTTP/1.0 201 This event doesn\'t exist and has been deleted', true, 201);
 	    }
 		else {
-			// Serchdule exists and go ahead to update it
+			// Event exists and go ahead to update it
 			// two steps commit
 			mysqli_autocommit($dbc, FALSE);
-			// update this schedule by setting the flag Is_Deleted to 1
-			$queryupdate = "update schedule set ".
+			// update this event by setting the flag Is_Deleted to 1
+			$queryupdate = "update event set ".
 						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-						" where Schedule_Id = '$scheduleid'";
+						" where Event_Id = '$eventid'";
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
 				mysqli_rollback($dbc);
-				header('HTTP/1.0 202 This schedule can\'t be deleted', true, 202);
+				header('HTTP/1.0 202 This Event can\'t be deleted', true, 202);
 				exit;
 			}
 			else {
 				// first to delete the existing relationship
 				$querydelete = "update onduty set ".
 				               " Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
-							   " WHERE Schedule_Id = '$scheduleid'";
+							   " WHERE Event_Id = '$eventid'";
 				
 				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
 				if ($result !== TRUE) {
@@ -370,7 +372,7 @@ class Event Extends Resource
 		$schedules_arr = array();
 		$members_att = array();
 		
-		// get the list of scheduleid and lastmodified
+		// get the list of eventid and lastmodified
 		$mysql = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
 		// call a stored procedure to get the schedules to be returned to caller
@@ -393,13 +395,13 @@ class Event Extends Resource
 						$odisdeleted = $row['odisdeleted'];
 						// if it's deleted, just add it to "deletedschedules"
 						if ($isdeleted == 1 || $odisdeleted == 1) {
-							$delschedule_arr[$j] = $row['scheduleid'];
+							$delschedule_arr[$j] = $row['eventid'];
 							$j++;
 						}
 						else {
 						   $one_arr = array();
-						   $one_arr['scheduleid'] = $row['scheduleid'];
-						   $one_arr['serviceid'] = $row['serviceid'];
+						   $one_arr['eventid'] = $row['eventid'];
+						   $one_arr['communityid'] = $row['communityid'];
 						   $one_arr['desp'] = $row['description'];
 						   $one_arr['creatorid'] = $row['creatorid'];
 						   $one_arr['startdatetime'] = $row['starttime'];
@@ -415,7 +417,7 @@ class Event Extends Resource
 					else {
 					   // second resultset 
 						$two_arr = array();
-						$two_arr['scheduleid'] = $row['scheduleid'];
+						$two_arr['eventid'] = $row['eventid'];
 						$two_arr['memberid'] = $row['memberid'];
 						
 					    $members_att[$k] = $two_arr;
@@ -438,13 +440,13 @@ class Event Extends Resource
 		//$delschedule_str = implode(",", $delschedule_arr); // concat to the string seprating by ,
 		
 		foreach ($schedules_arr as &$svalue) {
-			$scheduleid = $svalue['scheduleid'];
+			$eventid = $svalue['eventid'];
 			
-			// get the list of memberid associated with the schedule ID
+			// get the list of memberid associated with the Event ID
 			$members_str = '';
 			$i = 0;
 			foreach ($members_att as $mvalue) {
-			  if ($mvalue['scheduleid'] == $scheduleid) {
+			  if ($mvalue['eventid'] == $eventid) {
 				if($i==0)
 				{
 					$members_str.= $mvalue['memberid'];
@@ -456,7 +458,7 @@ class Event Extends Resource
 				$i++;
 			  }
 			}
-			//insert members associated with the schedule into the schedules_arr TBD
+			//insert members associated with the Event into the schedules_arr TBD
 			$svalue['members'] = $members_str;
 		}
 		unset($svalue);
@@ -481,7 +483,7 @@ class Event Extends Resource
 	Protected function partial_update_event($eventid, $event_arr) {
 		// table for event
 		$eventa = array(
-			'eventname' => 'Schedule_Name',
+			'eventname' => 'Event_Name',
 			'desp' => 'Description',
 			'startdatetime' => 'Start_DateTime',
 			'enddatetime' => 'End_DateTime',
@@ -489,8 +491,9 @@ class Event Extends Resource
 			'alert' => 'Alert',
 			'location' => 'Location',
 			'host' => 'Host',
-			'reventid' => 'REvent_id',
-			'status' => 'Status'
+			'beventid' => 'BEvent_id',
+			'status' => 'Status',
+			'repeatscheduleid' => 'Repeat_Schedule_Id'
 		);
 	
 		$ownerid = $event_arr['ownerid'];
@@ -503,8 +506,8 @@ class Event Extends Resource
 				}
 			}
 		}
-		$where = "Schedule_Id = '$eventid' ";
-		$table = "schedule";
+		$where = "Event_Id = '$eventid' ";
+		$table = "event";
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
@@ -557,7 +560,7 @@ class Event Extends Resource
 			foreach($request->body_parameters['event'] as $param_name => $param_value) {
 				$parameters1[$param_name] = $param_value;				
 			}
-			// ADD tasks, process them to insert into the schedule table and task and assign task
+			// ADD tasks, process them to insert into the event table and task and assign task
 			$this->insert($request->body_parameters['ownerid'], $request->body_parameters['communityid'], $parameters1);
 		}  
 		// to add multiple tasks
@@ -595,10 +598,10 @@ class Event Extends Resource
 	public function delete($request) {
 	     // logic to handle an HTTP DELETE request goes here
 		header('Content-Type: application/json; charset=utf8');
-		$scheduleid = end($request->url_elements);
+		$eventid = end($request->url_elements);
 		reset($request->url_elements);
 		$ownerid = $request->parameters['ownerid'];
-		$this->pdelete($scheduleid, $ownerid);
+		$this->pdelete($eventid, $ownerid);
     }
 	
 	

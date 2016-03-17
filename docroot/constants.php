@@ -1,5 +1,5 @@
 <?php
-    define('DB_NAME', 'cschedule');
+    define('DB_NAME', 'cschedule2016');
     define('DB_USER', 'root');
     define('DB_PASS', '');
     define('DB_SERVER', '127.0.0.1');
