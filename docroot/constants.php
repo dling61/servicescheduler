@@ -1,9 +1,10 @@
 <?php
-    define('DB_NAME', 'duplicate');
-    define('DB_USER', 'root');
-    define('DB_PASS', 'first1mysql');
-    define('DB_SERVER', '127.0.0.1');
-	define('DEBUG_FLAG', '0');
+
+ //    define('DB_NAME', 'duplicate');
+ //    define('DB_USER', 'root');
+ //    define('DB_PASS', 'first1mysql');
+ //    define('DB_SERVER', '127.0.0.1');
+	// define('DEBUG_FLAG', '0');
 	
 	define('PUSH_MODE', 'development');
 	define('LOG_LOCATION', 'log');

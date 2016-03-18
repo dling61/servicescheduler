@@ -1,0 +1,1 @@
+ALTER TABLE community Change Service_Name Community_name varchar(100);

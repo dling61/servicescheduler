@@ -88,13 +88,14 @@ class Task Extends Resource
 		$ownerid = $task_arr['ownerid'];
 		$taskname = $task_arr['taskname'];
 		$desp = $task_arr['desp'];
+		$repeating = $task_arr['repeating'];
 		$assignallowed = $task_arr['assignallowed'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
 		try {
 			// update the task table
-			$query2 = "Update task set Task_Name = '$taskname', Description = '$desp', Assign_Allowed = '$assignallowed', last_Modified = UTC_TIMESTAMP(), last_modified_id = '$ownerid' ".
+			$query2 = "Update task set Task_Name = '$taskname', Description = '$desp', Repeating = '$repeating', Assign_Allowed = '$assignallowed', last_Modified = UTC_TIMESTAMP(), last_modified_id = '$ownerid' ".
 						" where Task_id = '$taskid' ";
 			$result1 = mysqli_query($dbc, $query2);
 			
@@ -118,7 +119,8 @@ class Task Extends Resource
 			'taskname' => 'Task_Name',
 			'desp' => 'Description',
 			'repeating' => 'Repeating',
-			'assignallowed' => 'Assign_Allowed'
+			'assignallowed' => 'Assign_Allowed',
+			'repeating' => 'Repeating'
 		);
 	
 		$ownerid = $task_arr['ownerid'];
@@ -140,8 +142,6 @@ class Task Extends Resource
 		try {
 			// update the task table
 			$query2 = build_sql_update($table, $data, $where, $ownerid);
-			//$query2 = "Update task set Task_Name = '$taskname', Repeating = '$repeating', Description = '$desp', Assign_Allowed = '$assignallowed', last_Modified = UTC_TIMESTAMP(), last_modified_id = '$ownerid' ".
-						" where Task_id = '$taskid' ";
 			$result1 = mysqli_query($dbc, $query2);
 			
 		}
@@ -205,15 +205,17 @@ class Task Extends Resource
 		
         if (mysqli_num_rows($data) == 1) {
 			header('HTTP/1.0 201 This task exists already', true, 201);
+			exit;
 	    }
 		else {	
 			$queryinsert1 = "insert into task ".
-							 "(Task_Id,Task_Name,Schedule_Id,Repeating,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
+							 "(Task_Id,Task_Name,Event_Id,Repeating,Assign_Allowed,Assigned_Group, Description, Creator_Id, Created_Time,Last_Modified, Last_Modified_Id) ".
 							 "values('$taskid','$taskname','$eventid', '$repeating','$assignallowed','$assignedgroupid','$desp','$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
-							
+						
 			$result = mysqli_query($dbc,$queryinsert1);
 			if ($result !== TRUE) {
 				header('HTTP/1.0 202 Can not add a task', true, 202);
+				exit;
 			}
 		}	
 		$data2 = json_encode(array('lastmodified'=> gmdate("Y-m-d H:i:s", time())));
@@ -413,6 +415,7 @@ class Task Extends Resource
 			$queryupdate = "update task set ".
 						" Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 						" where Task_Id = '$taskid'";
+					
 			$result = mysqli_query($dbc,$queryupdate) or die("Error is: \n ".mysqli_error($dbc));
 			if ($result !== TRUE) {
 				// if error, roll back transaction
@@ -425,7 +428,7 @@ class Task Extends Resource
 				$querydelete = "update taskhelper set ".
 				               " Is_Deleted = 1, Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid' ".
 							   " WHERE Task_Id = '$taskid'";
-				
+		
 				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
 				if ($result !== TRUE) {
 					// if error, roll back transaction
@@ -586,6 +589,7 @@ class Task Extends Resource
 	// Assign a participant to the task
 	// 1. POST http://[api_domain_name]/task/1234/assignment
 	// 2. POST http://[api_domain_name]/task
+	// 03/09/2016
     public function post($request) {
 		$parameters1 = array();
 		
@@ -680,7 +684,8 @@ class Task Extends Resource
 		
 		$taskid = end($request->url_elements);
 		reset($request->url_elements);
-		$ownerid = $request->body_parameters['ownerid'];
+		//$ownerid = $request->body_parameters['ownerid'];
+		$ownerid = $request->parameters['ownerid'];
 		$this->pdelete($taskid, $ownerid);
     }
 }

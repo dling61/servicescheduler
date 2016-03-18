@@ -1,9 +1,9 @@
 <?php 
 	require_once('constants.php');
     require_once('class_creator.php');
-	require_once('class_members.php');
-	require_once('class_services.php');
-	require_once('class_schedules.php');
+	//require_once('class_members.php');
+	//require_once('class_services.php');
+	//require_once('class_schedules.php');
 	require_once('class_request.php');
 	require_once('class_feedback.php');
 	require_once('class_serversetting.php');
@@ -15,6 +15,8 @@
 	require_once('class_participantgroup.php');
 	require_once('class_taskhelper.php');
 	require_once('class_baseevent.php');
+	require_once('class_repeatschedule.php');
+	require_once('class_assignmentpool.php');
 	
 	// 08/16/2013: Moved this to GitHub for source code version control
 

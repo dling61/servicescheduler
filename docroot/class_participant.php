@@ -66,7 +66,7 @@ class Participant Extends Resource
 		$mobile = $body_param['mobile'];
 		$userrole = $body_param['userrole'];
 		
-		$query = "SELECT Is_Deleted isdeleted FROM participant WHERE Service_Id = '$communityid' and User_Id = '$userid' LIMIT 1";
+		$query = "SELECT Is_Deleted isdeleted FROM participant WHERE Community_Id = '$communityid' and User_Id = '$userid' LIMIT 1";
 		$data = mysqli_query($dbc, $query) or die(mysqli_error());
 	    $result = mysqli_fetch_assoc($data);
 		if (mysqli_num_rows($data)== 1 and $result['isdeleted'] == 0) {
@@ -78,13 +78,13 @@ class Participant Extends Resource
 		else {
 		    if (mysqli_num_rows($data)== 0) {
 				$queryinsert1 = "insert into participant".
-						 " (Participant_Id, Service_Id, User_Id, User_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
+						 " (Participant_Id, Community_Id, User_Id, User_Role, Is_Deleted,Creator_Id,Created_Time, Last_Modified, Last_Modified_Id) ".
 						 "values('$participantid', '$communityid','$userid', '$userrole',0,'$ownerid', UTC_TIMESTAMP(), UTC_TIMESTAMP(), '$ownerid')";
 			}
 			else if ($result['isdeleted'] == 1) {
 				$queryinsert1 = "update participant ".
 						 " set Is_Deleted = 0, User_Role = '$userrole', Last_Modified_Id = '$ownerid', Last_Modified = UTC_TIMESTAMP ".
-						 " where Service_Id = '$communityid' and User_Id = '$userid' ";
+						 " where Community_Id = '$communityid' and User_Id = '$userid' ";
 			}
 			
 			$result = mysqli_query($dbc,$queryinsert1);
@@ -140,7 +140,7 @@ class Participant Extends Resource
 				// second to change the user role in the participant table
 				$querydelete = "update participant set ".
 				               " User_Role = '$userrole', Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = '$ownerid', ".
-							   " Service_Id = '$communityid', User_Id = '$userid' ".
+							   " Community_Id = '$communityid', User_Id = '$userid' ".
 							   " WHERE Participant_Id = '$participantid' ";
 				
 				$result = mysqli_query($dbc,$querydelete) or die("Error is: \n ".mysqli_error($dbc));
@@ -168,7 +168,8 @@ class Participant Extends Resource
 		// table for participant, which including user information
 		$usera = array(
 			'username' => 'User_Name',
-			'mobile' => 'Mobile'
+			'mobile' => 'Mobile',
+			'profile' => 'Profile'
 		);
 		
 		$participanta = array(
@@ -223,7 +224,7 @@ class Participant Extends Resource
 			// update the participant table
 			$query2 = build_sql_update($ptable, $pdata, $pwhere, $ownerid);
 			$result1 = mysqli_query($dbc, $query2);
-			echo $query2;
+			
 			if ($result1 !== TRUE) {
 				// if error, roll back transaction
 				mysqli_rollback($dbc);
