@@ -1,36 +1,29 @@
 <?php
-    define('DB_NAME', 'cschedule');
+    define('DB_NAME', 'duplicate');
     define('DB_USER', 'root');
-    define('DB_PASS', '');
+    define('DB_PASS', 'first1mysql');
     define('DB_SERVER', '127.0.0.1');
-	define('DEBUG_FLAG', '1');
+	define('DEBUG_FLAG', '0');
 	
 	define('PUSH_MODE', 'development');
 	define('LOG_LOCATION', 'log');
 	//define('REST_SERVER', 'appitest2.servicescheduler.net');
-	define('REST_SERVER', '127.0.0.1:8090');
-	define('FEEDBACK_EMAIL', 'ding.dongling@gmail.com');
-	// define a profile image directory
-	define ('PROFILE_SERVER', 'http://127.0.0.1/filesvc/');
-	define ('FILE_LOCATION', 'c:\\localweb\\');
-	
-	
-	/*** Test Environment 
-    define('DB_NAME', 'testscheduler1');
-    define('DB_USER', 'testscheduler1');
-    define('DB_PASS', 'Scheduler2012#');
-    define('DB_SERVER', 'testscheduler1.db.9936855.hostedresource.com');
-	define('DEBUG_FLAG', '1');
-	
-	define('PUSH_MODE', 'development');
-	define('LOG_LOCATION', 'log');
-	define('REST_SERVER', 'appitest1.servicescheduler.net');
+	define('REST_SERVER', '127.0.0.1');
+	define('FEEDBACK_EMAIL', 'michaelrobtemp@gmail.com');
 
-	define('FEEDBACK_EMAIL', 'ding.dongling@gmail.com');
-	// define a profile image directory
-	define ('PROFILE_SERVER', 'http://test.cschedule.com/profile/');
-	define ('FILE_LOCATION', '../cscheduletest/profile/');
-	****/
+	// new constant for session
+	define('SESSION_UID', 'uid');
+	define('SESSION_PREFERENCE', 'preference_id');
+	define('SESSION_REMEMBER', 'remember_me');
+	define('SESSION_TIMESTAMP', 'last_activity');
+
+	define('REMEMBER_ME_YES', '1');
+	define('REMEMBER_ME_NO', '0');
+	define('LONG_SESSION', '5184000');
+	define('NORMAL_SESSION', '1800');
+	
+	define('LOGIN_SESSION_EXPIRE', '-1');
+	
 	
 	//Define our id-key pairs
 	$applications = array(
