@@ -3,7 +3,7 @@
 -- http://www.phpmyadmin.net
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 14, 2016 at 12:27 AM
+-- Generation Time: Mar 17, 2016 at 11:09 PM
 -- Server version: 5.6.15-log
 -- PHP Version: 5.5.8
 
@@ -52,6 +52,24 @@ CREATE TABLE IF NOT EXISTS `appdevice` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `assignmentpool`
+--
+
+CREATE TABLE IF NOT EXISTS `assignmentpool` (
+  `AssignmentPool_Id` int(11) NOT NULL,
+  `Task_Id` int(11) NOT NULL,
+  `PGroup_Id` int(11) NOT NULL,
+  `User_Id` int(11) NOT NULL,
+  `Is_Deleted` tinyint(1) NOT NULL,
+  `Creator_Id` int(11) NOT NULL,
+  `Created_Time` datetime NOT NULL,
+  `Last_Modified` datetime NOT NULL,
+  `Last_Modified_Id` int(11) NOT NULL,
+  PRIMARY KEY (`AssignmentPool_Id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+
+--
 -- Table structure for table `baseevent`
 --
 
@@ -71,7 +89,10 @@ CREATE TABLE IF NOT EXISTS `baseevent` (
   PRIMARY KEY (`BEvent_Id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
--- --------------------------------------------------------
+--
+-- Dumping data for table `baseevent`
+--
+
 
 --
 -- Table structure for table `community`
@@ -88,8 +109,6 @@ CREATE TABLE IF NOT EXISTS `community` (
   `Last_Modified_Id` int(11) DEFAULT NULL,
   PRIMARY KEY (`Community_Id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-
--- --------------------------------------------------------
 
 --
 -- Table structure for table `event`
@@ -109,37 +128,27 @@ CREATE TABLE IF NOT EXISTS `event` (
   `Start_DateTime` int(10) unsigned NOT NULL,
   `End_DateTime` int(10) unsigned NOT NULL,
   `Description` varchar(200) NOT NULL,
+  `Is_Deleted` tinyint(4) NOT NULL,
   `Creator_Id` int(11) NOT NULL,
-  `Is_Deleted` tinyint(1) NOT NULL,
   `Created_Time` datetime NOT NULL,
   `Last_Modified` datetime NOT NULL,
   `Last_Modified_Id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Event_Id`),
-  KEY `Service_Id` (`Community_Id`)
+  PRIMARY KEY (`Event_Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
--- --------------------------------------------------------
-
 --
--- Table structure for table `member`
+-- Table structure for table `groupparticipant`
 --
 
-CREATE TABLE IF NOT EXISTS `member` (
-  `Member_Id` int(11) NOT NULL,
-  `Member_Email` varchar(100) NOT NULL,
-  `Member_Name` varchar(100) NOT NULL,
-  `mobile_number` varchar(20) DEFAULT NULL,
-  `Is_Registered` tinyint(1) NOT NULL DEFAULT '0',
+CREATE TABLE IF NOT EXISTS `groupparticipant` (
+  `PGroup_Id` int(11) NOT NULL,
+  `User_Id` int(11) NOT NULL,
+  `Is_Deleted` tinyint(1) NOT NULL,
   `Creator_Id` int(11) NOT NULL,
   `Created_Time` datetime NOT NULL,
-  `Is_Deleted` tinyint(1) NOT NULL DEFAULT '0',
   `Last_Modified` datetime NOT NULL,
-  `Last_Modified_Id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Member_Id`),
-  KEY `Member_Email` (`Member_Email`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-
--- --------------------------------------------------------
+  `Last_Modified_Id` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 --
 -- Table structure for table `participant`
@@ -157,8 +166,6 @@ CREATE TABLE IF NOT EXISTS `participant` (
   `Last_Modified_Id` int(11) NOT NULL,
   PRIMARY KEY (`Participant_Id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
-
--- --------------------------------------------------------
 
 --
 -- Table structure for table `participantgroup`
@@ -212,8 +219,6 @@ CREATE TABLE IF NOT EXISTS `repeatschedule` (
   PRIMARY KEY (`RSchedule_Id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1;
 
--- --------------------------------------------------------
-
 --
 -- Table structure for table `resetpassword`
 --
@@ -244,9 +249,8 @@ CREATE TABLE IF NOT EXISTS `serverlog` (
   `Created_DateTime` datetime NOT NULL,
   `Client_Device_Id` int(11) NOT NULL,
   PRIMARY KEY (`Log_Id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=58749 ;
+) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=58756 ;
 
--- --------------------------------------------------------
 
 --
 -- Table structure for table `task`
@@ -272,6 +276,7 @@ CREATE TABLE IF NOT EXISTS `task` (
   PRIMARY KEY (`Task_Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+
 -- --------------------------------------------------------
 
 --
@@ -289,11 +294,8 @@ CREATE TABLE IF NOT EXISTS `taskhelper` (
   `Created_Time` datetime NOT NULL,
   `Last_Modified` datetime NOT NULL,
   `Last_Modified_Id` int(11) NOT NULL,
-  PRIMARY KEY (`TaskHelper_Id`),
-  UNIQUE KEY `gsc` (`Task_Id`,`Event_Id`,`User_Id`)
+  PRIMARY KEY (`TaskHelper_Id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
--- --------------------------------------------------------
 
 --
 -- Table structure for table `timezonedb`
@@ -333,8 +335,6 @@ CREATE TABLE IF NOT EXISTS `user` (
   `Last_Modified_Id` int(11) DEFAULT '0',
   PRIMARY KEY (`User_id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=latin1 AUTO_INCREMENT=143 ;
-
--- --------------------------------------------------------
 
 --
 -- Table structure for table `userlog`
