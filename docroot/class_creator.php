@@ -74,7 +74,7 @@ class Creator Extends Resource
 		 
 		$email = $body_parms['email'];
 		$password = $body_parms['password'];
-		$remember_me = REMEMBER_ME_YES;
+		$remember_me = REMEMBER_ME_NO;
 		 
 		// $dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 	  
@@ -114,8 +114,8 @@ class Creator Extends Resource
 			$one_arr['repeatscheduleid'] = $row['RSchedule_Id'];
 			$one_arr['participantid'] = $row['Participant_Id'];
 			
-			session_init($row['User_Id'], $remember_me);
 			if ($one_arr['ownerid'] != 0) {
+				session_init($row['User_Id'], $remember_me);
 				$data2 = json_encode($one_arr);
 				echo $data2;
 				
