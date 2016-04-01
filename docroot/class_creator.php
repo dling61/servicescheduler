@@ -4,6 +4,7 @@ require_once('class_resource.php');
 require_once('constants.php');
 require_once('common_fn.php');
 require_once('class_request.php');
+require_once('sessions.php');
 
 class Creator Extends Resource
 {
@@ -69,13 +70,13 @@ class Creator Extends Resource
 	}
 	
 	Protected function signin($body_parms) {
-	  
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 		 
 		$email = $body_parms['email'];
 		$password = $body_parms['password'];
+		$remember_me = REMEMBER_ME_NO;
 		 
-		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		// $dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 	  
         $query = "SELECT IFNULL(MAX(u.User_Id ), 0) User_Id, u.User_Name User_Name, u.Profile Profile, u.Mobile Mobile, IFNULL(MAX( s.Community_Id ), 0) Community_Id, IFNULL(MAX(t.Task_Id ), 0) Task_Id, ".
 		         " IFNULL(MAX(sc.event_id), 0) Event_Id, IFNULL(MAX(th.TaskHelper_id), 0) TaskHelper_Id, IFNULL(MAX(bs.BEvent_Id), 0) BEvent_Id, IFNULL(MAX(pg.PGroup_id), 0) PGroup_Id, ".
@@ -89,8 +90,13 @@ class Creator Extends Resource
 					"LEFT JOIN repeatschedule rs ON u.User_Id = rs.Creator_Id ".
 					"LEFT JOIN participant pt ON u.User_Id = pt.Creator_Id ".
 					" WHERE u.Email =  '$email' AND u.Password = SHA('$password')";
-		
-		$data = mysqli_query($dbc, $query);	
+
+		// clear sql_mode to avoid only_full_group_by	
+		mysqli_query($dbc, "SET SESSION sql_mode = ''");
+		$data = mysqli_query($dbc, $query);
+		// echo mysqli_error($dbc);
+		// session_start();
+
         if (mysqli_num_rows($data)==1) {
 		    $row = mysqli_fetch_array($data);
 			
@@ -109,6 +115,7 @@ class Creator Extends Resource
 			$one_arr['participantid'] = $row['Participant_Id'];
 			
 			if ($one_arr['ownerid'] != 0) {
+				session_init($row['User_Id'], $remember_me);
 				$data2 = json_encode($one_arr);
 				echo $data2;
 				
@@ -524,6 +531,7 @@ class Creator Extends Resource
 		
 		$lastElement = end($request->url_elements);
 		reset($request->url_elements);
+		echo $lastElement;
 		if ($lastElement == 'register') {
 			$this->register($request->body_parameters);
 		}

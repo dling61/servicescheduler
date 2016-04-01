@@ -17,6 +17,7 @@
 	require_once('class_baseevent.php');
 	require_once('class_repeatschedule.php');
 	require_once('class_assignmentpool.php');
+	require_once('sessions.php');
 	
 	// 08/16/2013: Moved this to GitHub for source code version control
 
@@ -25,7 +26,14 @@
 	
 	// check security code
 	checkscode($request, $applications);
-
+	$lastELement = end($request->url_elements);
+	reset($request->url_elements);
+	$uid = get_session_uid();
+	if ($lastELement != "signin" && $uid == LOGIN_SESSION_EXPIRE) {
+		header('Content-Type: application/json; charset=utf8');
+		header('HTTP/1.0 440 Login Timeout', true, 440);
+		exit;
+	}
 	// TDB:this is the place to get the controller(resource); in the release it should "1" instead of 2 for url_element[x]
 	// 
 	//  For testing:
@@ -34,7 +42,7 @@
 	//  For production or testing environment on hosting service
 	// http://servicescheduler.net/creator?
 	// url_element1[1]
-	$controller_name = ucfirst($request->url_elements[2]);
+	$controller_name = ucfirst($request->url_elements[1]);
 	
 	header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
     header('Access-Control-Allow-Origin: *');
