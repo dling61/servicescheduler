@@ -16,6 +16,10 @@ session.save_handler = redis
 session.save_path = "tcp://IPADDRESS:PORT?auth=REDISPASSWORD"
 "
 
+--- IPADDRESS is localhost
+--- PORT is 6379
+--- No password for Redis
+
 3. Redis Reference
 
  http://www.thegeekstuff.com/2014/02/phpredis/
