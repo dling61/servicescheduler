@@ -74,9 +74,7 @@ class Creator Extends Resource
 		 
 		$email = $body_parms['email'];
 		$password = $body_parms['password'];
-		$remember_me = REMEMBER_ME_NO;
-		 
-		// $dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		$remember_me = REMEMBER_ME_NO;		 
 	  
         $query = "SELECT IFNULL(MAX(u.User_Id ), 0) User_Id, u.User_Name User_Name, u.Profile Profile, u.Mobile Mobile, IFNULL(MAX( s.Community_Id ), 0) Community_Id, IFNULL(MAX(t.Task_Id ), 0) Task_Id, ".
 		         " IFNULL(MAX(sc.event_id), 0) Event_Id, IFNULL(MAX(th.TaskHelper_id), 0) TaskHelper_Id, IFNULL(MAX(bs.BEvent_Id), 0) BEvent_Id, IFNULL(MAX(pg.PGroup_id), 0) PGroup_Id, ".
@@ -94,8 +92,6 @@ class Creator Extends Resource
 		// clear sql_mode to avoid only_full_group_by	
 		mysqli_query($dbc, "SET SESSION sql_mode = ''");
 		$data = mysqli_query($dbc, $query);
-		// echo mysqli_error($dbc);
-		// session_start();
 
         if (mysqli_num_rows($data)==1) {
 		    $row = mysqli_fetch_array($data);
@@ -531,7 +527,7 @@ class Creator Extends Resource
 		
 		$lastElement = end($request->url_elements);
 		reset($request->url_elements);
-		echo $lastElement;
+		
 		if ($lastElement == 'register') {
 			$this->register($request->body_parameters);
 		}
@@ -569,9 +565,11 @@ class Creator Extends Resource
 			reset($request->url_elements);
 			$this->update($userid, $request->body_parameters);
 	    }
-		
-		
-		
 	}
+	
+	// empty function to avoid error on amazon
+	public function options($request) {
+	}
+		
 }
 ?>

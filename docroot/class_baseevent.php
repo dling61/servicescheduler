@@ -183,7 +183,6 @@ class BaseEvent Extends Resource
 		// Construct a output jason object starting from event, task, and then assignment
 		foreach ($event_arr as $svalue) {
 			$eventid = $svalue['eventid'];
-			$reventid = $svalue['beventid'];
 			// go down to task level
 			$task_temp = array();
 			$i = 0;

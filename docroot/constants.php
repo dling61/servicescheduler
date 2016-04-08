@@ -1,18 +1,26 @@
 <?php
 
- //    define('DB_NAME', 'duplicate');
- //    define('DB_USER', 'root');
- //    define('DB_PASS', 'first1mysql');
- //    define('DB_SERVER', '127.0.0.1');
-	// define('DEBUG_FLAG', '0');
+    /**
+	 *    Database Connection
+	 *    TBD: Change them for the environment
+	 */
+    define('DB_NAME', 'cschedule2016');
+    define('DB_USER', 'root');
+    define('DB_PASS', '');
+    define('DB_SERVER', '127.0.0.1');
+    define('DEBUG_FLAG', '0');
 	
-	define('PUSH_MODE', 'development');
-	define('LOG_LOCATION', 'log');
-	//define('REST_SERVER', 'appitest2.servicescheduler.net');
-	define('REST_SERVER', '127.0.0.1');
-	define('FEEDBACK_EMAIL', 'michaelrobtemp@gmail.com');
-
-	// new constant for session
+	
+	/**
+	 *   Profile Image Location
+	 *   TBD: Change them for the environment
+	 */
+	define ('PROFILE_SERVER', 'http://test.cschedule.com/profile/');
+	define ('FILE_LOCATION', '../cscheduletest/profile/');
+	
+	/**
+	 *    Session management
+	 */
 	define('SESSION_UID', 'uid');
 	define('SESSION_PREFERENCE', 'preference_id');
 	define('SESSION_REMEMBER', 'remember_me');
@@ -24,9 +32,25 @@
 	define('NORMAL_SESSION', '1800');
 	
 	define('LOGIN_SESSION_EXPIRE', '-1');
+	// TBD: Change them for the environment
+	define('CLIENT_SERVER', 'http://www.cschedule.org');
 	
+	/**
+	 *  IOS push notification 
+	 */
+	define('PUSH_MODE', 'development');
+
+	/**
+	 *   Misc configuration
+	 */
+	//define('REST_SERVER', 'appitest2.servicescheduler.net');
+	define('REST_SERVER', '127.0.0.1');
+	define('FEEDBACK_EMAIL', 'ding.dongling@gmail.com');
+	define('LOG_LOCATION', 'log');
 	
-	//Define our id-key pairs
+	/**
+	 *    Security Keys
+	 */
 	$applications = array(
 	    // for IOS
 		'IOS' => '28e336ac6c9423d946ba02dddd6a2632', //randomly generated app key 
