@@ -79,10 +79,10 @@ return Date_add(startDate, interval delta day);
 END$
 DELIMITER ;
 
-DROP PROCEDURE IF EXISTS `_GENERATE_EVENTS`;
+DROP PROCEDURE IF EXISTS `GENERATE_EVENTS`;
 DELIMITER $
 
-CREATE PROCEDURE `_GENERATE_EVENTS`(BASE_EVENT_ID INT,
+CREATE PROCEDURE `GENERATE_EVENTS`(BASE_EVENT_ID INT,
 							REPEATSCHEDULE_ID INT,
                             service_id INT,
                             owner_id INT,
@@ -106,7 +106,6 @@ INTO repeat_setting , fromDate , toDate FROM
     repeatschedule
 WHERE
     RSchedule_Id = repeatschedule_id;
-    
 SELECT 
     REvent_StartTime, REvent_EndTime
 INTO startTime , endTime FROM
@@ -145,7 +144,7 @@ where Revent_id = BASE_EVENT_ID;
 while LOOP_int < n DO
 	SET LOOP_DATE = getNextDateOfWeekDay(fromDate, SPLIT_STRING(by_day,',',LOOP_int+1));
 	While LOOP_DATE < toDate DO
-		insert into tempEvent(
+		insert into event(
         Event_Id,Event_Name,Service_Id,
         Tz_Id,Location,`Host`,
         REvent_Id,Repeat_schedule_ID, 
@@ -162,179 +161,4 @@ while LOOP_int < n DO
     Set LOOP_int = LOOP_int + 1;
 END while;
 SET last_event_id = temp_event_id - 1;
-END$ DELIMITER ;
-
-DROP PROCEDURE IF EXISTS `GENERATE_EVENTS`;
-DELIMITER $
-
-CREATE PROCEDURE `GENERATE_EVENTS`(BASE_EVENT_ID INT,
-							REPEATSCHEDULE_ID INT,
-                            service_id INT,
-                            owner_id INT,
-                            init_event_id INT,
-                            out last_event_id INT)
-BEGIN
-drop table if exists tempEvent;
-create temporary table tempEvent(
-  `Event_Id` int(11) NOT NULL DEFAULT '0',
-  `Event_Name` varchar(100) DEFAULT NULL,
-  `Status` varchar(10) DEFAULT NULL,
-  `Service_Id` int(11) NOT NULL,
-  `Tz_Id` int(11) DEFAULT NULL,
-  `Alert` int(11) DEFAULT NULL,
-  `Location` varchar(200) DEFAULT NULL,
-  `Host` varchar(200) DEFAULT NULL,
-  `REvent_Id` int(11) DEFAULT NULL,
-  `Repeat_Schedule_Id` int(11) NOT NULL,
-  `Start_DateTime` datetime NOT NULL,
-  `End_DateTime` datetime NOT NULL,
-  `Description` varchar(200) NOT NULL,
-  `Creator_Id` int(11) NOT NULL,
-  `Is_Deleted` tinyint(1) NOT NULL,
-  `Created_Time` datetime NOT NULL,
-  `Last_Modified` datetime NOT NULL,
-  `Last_Modified_Id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Event_Id`),
-  KEY `Service_Id` (`Service_Id`)
-);
-call _GENERATE_EVENTS(BASE_EVENT_ID, REPEATSCHEDULE_ID,
-                            service_id, owner_id,
-                            init_event_id,
-                            last_event_id);
-insert into event select * from tempEvent;
-drop table if exists tempEvent;
-END$ DELIMITER ;
-
-DROP PROCEDURE IF EXISTS `UPDATE_EVENTS`;
-DELIMITER $
-
-CREATE PROCEDURE `UPDATE_EVENTS`(BASE_EVENT_ID INT,
-							REPEATSCHEDULE_ID INT,
-                            service_id INT,
-                            owner_id INT,
-                            init_event_id INT,
-                            out last_event_id INT)
-BEGIN
-DECLARE oldCount, `Count` int;
-drop table if exists tempEvent;
-drop table if exists tempOldEvent;
-drop table if exists tempEventEdit;
-create TEMPORARY table tempEvent(
-  `Event_Id` int(11) NOT NULL DEFAULT '0',
-  `Event_Name` varchar(100) DEFAULT NULL,
-  `Status` varchar(10) DEFAULT NULL,
-  `Service_Id` int(11) NOT NULL,
-  `Tz_Id` int(11) DEFAULT NULL,
-  `Alert` int(11) DEFAULT NULL,
-  `Location` varchar(200) DEFAULT NULL,
-  `Host` varchar(200) DEFAULT NULL,
-  `REvent_Id` int(11) DEFAULT NULL,
-  `Repeat_Schedule_Id` int(11) NOT NULL,
-  `Start_DateTime` datetime NOT NULL,
-  `End_DateTime` datetime NOT NULL,
-  `Description` varchar(200) NOT NULL,
-  `Creator_Id` int(11) NOT NULL,
-  `Is_Deleted` tinyint(1) NOT NULL,
-  `Created_Time` datetime NOT NULL,
-  `Last_Modified` datetime NOT NULL,
-  `Last_Modified_Id` int(11) DEFAULT NULL,
-  PRIMARY KEY (`Event_Id`),
-  KEY `Service_Id` (`Service_Id`)
-);
-
-create TEMPORARY table tempEventEdit(
-  `temp_Id`  int(11),
-  `Event_Id` int(11) NOT NULL DEFAULT '0',
-  `Event_Name` varchar(100) DEFAULT NULL,
-  `Status` varchar(10) DEFAULT NULL,
-  `Service_Id` int(11) NOT NULL,
-  `Tz_Id` int(11) DEFAULT NULL,
-  `Alert` int(11) DEFAULT NULL,
-  `Location` varchar(200) DEFAULT NULL,
-  `Host` varchar(200) DEFAULT NULL,
-  `REvent_Id` int(11) DEFAULT NULL,
-  `Repeat_Schedule_Id` int(11) NOT NULL,
-  `Start_DateTime` datetime NOT NULL,
-  `End_DateTime` datetime NOT NULL,
-  `Description` varchar(200) NOT NULL,
-  `Creator_Id` int(11) NOT NULL,
-  `Is_Deleted` tinyint(1) NOT NULL,
-  `Created_Time` datetime NOT NULL,
-  `Last_Modified` datetime NOT NULL,
-  `Last_Modified_Id` int(11) DEFAULT NULL,
-  KEY `Service_Id` (`Service_Id`)
-);
-
-create TEMPORARY table tempOldEvent(
-  `temp_Id`  int(11),
-  `Event_Id` int(11) NOT NULL DEFAULT '0',
-  `Event_Name` varchar(100) DEFAULT NULL,
-  `Status` varchar(10) DEFAULT NULL,
-  `Service_Id` int(11) NOT NULL,
-  `Tz_Id` int(11) DEFAULT NULL,
-  `Alert` int(11) DEFAULT NULL,
-  `Location` varchar(200) DEFAULT NULL,
-  `Host` varchar(200) DEFAULT NULL,
-  `REvent_Id` int(11) DEFAULT NULL,
-  `Repeat_Schedule_Id` int(11) NOT NULL,
-  `Start_DateTime` datetime NOT NULL,
-  `End_DateTime` datetime NOT NULL,
-  `Description` varchar(200) NOT NULL,
-  `Creator_Id` int(11) NOT NULL,
-  `Is_Deleted` tinyint(1) NOT NULL,
-  `Created_Time` datetime NOT NULL,
-  `Last_Modified` datetime NOT NULL,
-  `Last_Modified_Id` int(11) DEFAULT NULL,
-  KEY `Service_Id` (`Service_Id`)
-);
-
-call _GENERATE_EVENTS(BASE_EVENT_ID, REPEATSCHEDULE_ID,
-                            service_id, owner_id,
-                            init_event_id,
-                            last_event_id);
-                            
-SET @row_number:=0;
-insert into tempOldEvent select @row_number := @row_number + 1, e.* from event e where e.Repeat_Schedule_id = repeatschedule_ID and Is_Deleted = 0 order by Start_DateTime;
-
-SET @row_number:=0;
-insert into tempEventEdit select @row_number := @row_number + 1, e.* from tempEvent e where e.Repeat_Schedule_id = repeatschedule_ID and Is_Deleted = 0 order by Start_DateTime;
-
-update tempEventEdit SET Event_id = -1;
-
-update tempEventEdit e, tempOldEvent oe
-Set 
-e.`Event_Id` = oe.`Event_Id`,
-e.`Event_Name` = oe.`Event_Name`,
-e.`Status` = oe.`Status`,
-e.`Service_Id` = oe.`Service_Id`,
-e.`Tz_Id` = oe.`Tz_Id`,
-e.`Alert` = oe.`Alert`,
-e.`Location` = oe.`Location`,
-e.`Host` = oe.`Host`,
-e.`REvent_Id` = oe.`REvent_Id`,
-e.`Repeat_Schedule_Id` = oe.`Repeat_Schedule_Id`,
-e.`Start_DateTime` = oe.`Start_DateTime`,
-e.`End_DateTime` = oe.`End_DateTime`,
-e.`Description` = oe.`Description`,
-e.`Creator_Id` = oe.`Creator_Id`,
-e.`Is_Deleted` = oe.`Is_Deleted`,
-e.`Created_Time` = oe.`Created_Time`,
-e.`Last_Modified` = oe.`Last_Modified`,
-e.`Last_Modified_Id` = oe.`Last_Modified_Id` 
-where e.Start_DateTime = oe.Start_DateTime and e.End_DateTime = oe.End_DateTime;
-
-select count(*) into oldCount from tempOldEvent;
-select count(*) into count from tempEvent;
-
-if oldCount = `Count` then
-SET @row_number:=0;
-SET @minEventID:=-1;
-#update event e, tempEventEdit te set e.Start_DateTime = te.Start_DateTime, e.End_DateTime = te.End_DateTime where e.Event_id = te.Event_id;
-else
-SET @row_id = init_event_id -1 ;
-update tempEventEdit set Event_Id = @row_id  where Event_Id = -1 and @row_id := @row_id + 1; 
-#replace event select * from tempOldEvent;
-end if;
-#drop table if exists tempEvent;
-#drop table if exists tempOldEvent;
 END$ DELIMITER ;
