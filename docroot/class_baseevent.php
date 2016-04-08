@@ -91,6 +91,156 @@ class BaseEvent Extends Resource
 		mysqli_close($dbc);
 	}
 	
+	
+	// This is for get event API based on a participant base event
+	// First result is for events; Second result is for tasks; Third result is for assignment
+	// This is for API 1.5  04/04/2016
+	Protected function pgetlastupdate_event($baseeventid, $lastupdatetime) {
+	  
+		$return_arr = array();
+		$event_arr = array();
+		$task_arr = array();
+		$assignment_arr = array();
+		
+		$mysql = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		
+		// call a stored procedure 
+		if ($mysql->multi_query("CALL getEventFromBaseEventByLastUpdate('$baseeventid', '$lastupdatetime')")) {
+	      // this is for the number of resultset 
+          $h = 0;
+		  //loop through three resultsets
+          do {
+            if ($result = $mysql->use_result())
+            {
+			    $i = 0;
+				$j = 0;
+				$k = 0;
+				$l = 0;
+				$m = 0;
+                //Loop the two result sets, reading it into an array
+                while ($row = $result->fetch_array(MYSQLI_ASSOC))
+                {
+                    if ($h == 0) {
+					 
+					   $one_arr = array();
+					   $one_arr['eventid'] = $row['eventid'];
+					   $one_arr['eventname'] = $row['eventname'];
+					   $one_arr['desp'] = $row['description'];
+					   $one_arr['startdatetime'] = $row['startdatetime'];
+					   $one_arr['enddatetime'] = $row['enddatetime'];
+					   $one_arr['alert'] = $row['alert'];
+					   $one_arr['tzid'] = $row['tzid'];
+					   $one_arr['location'] = $row['location'];
+					   $one_arr['host']  = $row['host'];
+					   $one_arr['status']  = $row['status'];
+					   $one_arr['beventid'] = $row['beventid'];
+					   $one_arr['task'] = "";
+					   $event_arr[$i] = $one_arr;
+					   $i++;			   
+					}
+					else if ($h == 1){
+					   // second result set for task 
+						$two_arr = array();
+						$two_arr['taskid'] = $row['taskid'];
+						$two_arr['eventid'] = $row['eventid'];
+						$two_arr['taskname'] = $row['taskname'];
+						$two_arr['beventid'] = $row['beventid'];
+						$two_arr['desp'] = $row['description'];
+						$two_arr['assignallowed'] = $row['assignallowed'];
+						//$two_arr['assignedgroup'] = $row['assignedgroup'];
+					    $two_arr['taskhelper'] = "";
+						$task_arr[$k] = $two_arr;
+						$k++;
+					}
+					else if ($h == 2){
+						// third result set for taskhelper
+						$third_arr = array();
+						$third_arr['taskhelperid'] = $row['taskhelperid'];
+						$third_arr['taskid'] = $row['taskid'];
+						$third_arr['eventid'] = $row['eventid'];
+						$third_arr['userid'] = $row['userid'];
+						$third_arr['username'] = $row['username'];
+						$third_arr['userprofile'] = PROFILE_SERVER .$row['userprofile'];
+						$third_arr['status'] = $row['status'];
+					    $assignment_arr[$l] = $third_arr;
+						$l++;
+					} 
+                } // while end
+	
+                // Close the result set
+                $result->close();
+				$h++;
+            }
+          } while ($mysql->more_results() == TRUE && $mysql->next_result());
+        }
+        else
+        {
+            echo '<strong>Error Message ' . $mysql->error . '</strong></p>';
+        }
+		
+		mysqli_close($mysql);	
+		$x = 0;
+		// Construct a output jason object starting from event, task, and then assignment
+		foreach ($event_arr as $svalue) {
+			$eventid = $svalue['eventid'];
+			$reventid = $svalue['beventid'];
+			// go down to task level
+			$task_temp = array();
+			$i = 0;
+			foreach ($task_arr as $mvalue) {
+				if ($mvalue['eventid'] == $eventid) {
+					// Add the task one by one
+					$task_temp_1 = array();
+					$task_id = $mvalue['taskid'];
+					
+					$task_temp_1['taskid'] = $mvalue['taskid'];
+					$task_temp_1['taskname'] = $mvalue['taskname'];
+					$task_temp_1['desp'] = $mvalue['desp'];
+					$task_temp_1['beventid'] = $mvalue['beventid'];
+					$task_temp_1['assignallowed'] = $mvalue['assignallowed'];
+					//$task_temp_1['assignedgroup'] = $mvalue['assignedgroup'];
+				
+					$assignment_temp = array();
+					$j = 0;
+					// go down to the task assignment level
+					foreach ($assignment_arr as $avalue) {
+						// add eventid because the same taskid will be used for different events
+						if ($avalue['taskid'] == $task_id and $avalue['eventid'] == $eventid) {
+							$assignment_temp_1 = array();
+							
+							$assignment_temp_1['taskhelperid'] = $avalue['taskhelperid'];
+							$assignment_temp_1['userid'] = $avalue['userid'];
+							$assignment_temp_1['username'] = $avalue['username'];
+							$assignment_temp_1['userprofile'] = $avalue['userprofile'];
+							$assignment_temp_1['status'] = $avalue['status'];
+							
+							$assignment_temp[$j] = $assignment_temp_1;
+							$j++;
+						}
+					}
+					$task_temp_1['taskhelper'] = $assignment_temp;
+					//add tasks
+					$task_temp[$i] = $task_temp_1;
+					$i++;
+				}
+			}
+			//insert task associated with the event into the event_arr TBD
+			$svalue['task'] = $task_temp;
+			
+			// insert into the final array
+			$return_arr[$x] = $svalue;
+			$x++;	
+		} // end of event loop
+		unset($svalue);
+		
+		$data2 = json_encode($return_arr);
+		echo $data2;
+		
+		// logserver if debug flag is set to 1
+		if (DEBUG_FLAG == 1)
+		    logserver_response($this->lastid,$data2);
+	}
+	
 	/**
 	  This is to delete the base event
 	**/
@@ -179,9 +329,17 @@ class BaseEvent Extends Resource
 		header('Content-Type: application/json; charset=utf8');
 		$lastElement = end($request->url_elements);
 		reset($request->url_elements);
-        $beventid = $lastElement;
+       
 		
-		$this->pgetBaseEvent($beventid);
+		if ($lastElement == "event") {
+			// get the list of events under a base event
+			$baseeventif  = $request->url_elements[count($request->url_elements)-2];
+			$this->pgetlastupdate_event($baseeventif, $lastupdatetime);
+		} 
+		else {
+			$beventid = $lastElement;
+			$this->pgetBaseEvent($beventid);
+		}	
     }
 
 	// This is the API for creating a base event for repeating events
