@@ -96,8 +96,8 @@ BEGIN
 	DECLARE LOOP_int int;
 	DECLARE LOOP_Date date;
 	DECLARE temp_event_id, community_id int;
-	DECLARE event_name, status, community_id, tz_id, location, host,
-	 BEventId, creatorId, lastModifiedId varchar(500);
+	DECLARE event_name, status, tz_id, location, host,
+	 BEventId, creator_id, lastModifiedId varchar(500);
 
 
 	SELECT 
