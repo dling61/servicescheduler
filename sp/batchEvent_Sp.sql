@@ -82,8 +82,8 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS `_GENERATE_EVENTS`;
 DELIMITER $
 CREATE PROCEDURE `_GENERATE_EVENTS`(bevent_id INT,
-							rschedule_id INT,
-                            community_id INT,
+							#rschedule_id INT,
+                            #community_id INT,
                             owner_id INT,
                             init_event_id INT,
                             out last_event_id INT)
@@ -95,17 +95,19 @@ BEGIN
 	DECLARE BY_Day varchar(500);
 	DECLARE LOOP_int int;
 	DECLARE LOOP_Date date;
-	DECLARE temp_event_id int;
+	DECLARE temp_event_id, community_id int;
 	DECLARE eventName, status, communityId, tz_id, location, host,
 	 BEventId, creatorId, lastModifiedId varchar(500);
+
 
 	SELECT 
 		Repeat_Interval, From_Date, To_Date
 	INTO repeat_setting , fromDate , toDate FROM
-		repeatschedule
+		baseevent
 	WHERE
-		RSchedule_Id = rschedule_id;
-	
+		BEvent_Id = bevent_id LIMIT 1;
+
+
 	SELECT 
 		BEvent_StartTime, BEvent_EndTime
 	INTO startTime , endTime FROM
@@ -133,9 +135,9 @@ BEGIN
 	SET temp_event_id = init_event_id;
 
 	-- data transfer
-	Select BEvent_Name, BEvent_Tz_Id, BEvent_Location, BEvent_Host, BEvent_Id, Creator_Id 
-	into eventName, tz_id, location, host, BEventId, creatorId 
-	from baseevent
+	Select be.BEvent_Name, be.BEvent_Tz_Id, be.BEvent_Location, be.BEvent_Host, be.BEvent_Id, be.Creator_Id, be.community_id
+	into eventName, tz_id, location, host, BEventId, creatorId, community_id
+	from baseevent be
 	where BEvent_id = bevent_id LIMIT 1;
 
 	while LOOP_int < n DO
@@ -149,7 +151,7 @@ BEGIN
 			is_deleted, Creator_Id,Created_Time,Last_Modified,Last_Modified_Id) 
 			values (temp_event_id,eventName,community_id,
 					tz_id,location,host,
-					BEventId,rschedule_id,
+					BEventId,0,
 					UNIX_TIMESTAMP(addtime(LOOP_DATE, startTime)), UNIX_TIMESTAMP(addtime(LOOP_DATE , endTime)),'',
 					0, owner_id, now(),now(),owner_id);
 			SET LOOP_DATE = DATE_ADD(LOOP_DATE, interval i day);
@@ -158,18 +160,20 @@ BEGIN
 		Set LOOP_int = LOOP_int + 1;
 	END while;
 	SET last_event_id = temp_event_id - 1;
-END$ 
-DELIMITER ;
+END$ DELIMITER ;
 
 DROP PROCEDURE IF EXISTS `GENERATE_EVENTS`;
 DELIMITER $
+
 CREATE PROCEDURE `GENERATE_EVENTS`(bevent_id INT,
-							rschedule_id INT,
-                            community_id INT,
+							#rschedule_id INT,
+                            #community_id INT,
                             owner_id INT,
                             init_event_id INT,
                             out last_event_id INT)
 BEGIN
+	drop table if exists tempEvent;-- in case there's error happended last thme we called this function
+	drop table if exists temp_repeat_setting;
     CREATE TEMPORARY TABLE IF NOT EXISTS 
 	tempEvent(
 	  `Event_Id` int(11) NOT NULL DEFAULT '0',
@@ -193,22 +197,23 @@ BEGIN
 	  PRIMARY KEY (`Event_Id`),
 	  KEY `Community_Id` (`Community_Id`)
 	);
-	call _GENERATE_EVENTS(bevent_id, rschedule_id,
-								community_id, owner_id,
+	call _GENERATE_EVENTS(bevent_id, #rschedule_id,
+								#community_id,
+                                owner_id,
 								init_event_id,
 								last_event_id);
 	insert into event select * from tempEvent;
 	commit;
 	drop table if exists tempEvent;
 	drop table if exists temp_repeat_setting;
-END$ 
-DELIMITER ;
+END$ DELIMITER ;
 
 DROP PROCEDURE IF EXISTS `UPDATE_EVENTS`;
 DELIMITER $
-CREATE PROCEDURE `UPDATE_EVENTS`(bevent_id INT,
-							rschedule_id INT,
-                            community_id INT,
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `UPDATE_EVENTS`(bevent_id INT,
+							#rschedule_id INT,
+                            #community_id INT,
                             owner_id INT,
                             init_event_id INT,
                             out last_event_id INT)
@@ -286,16 +291,16 @@ BEGIN
 	  KEY `Community_Id` (`Community_Id`)
 	);
 
-	call _GENERATE_EVENTS(bevent_id, rschedule_id,
-								community_id, owner_id,
+	call _GENERATE_EVENTS(bevent_id, #rschedule_id,
+								0, owner_id,
 								init_event_id,
 								last_event_id);
 								
 	SET @row_number:=0;
-	insert into tempOldEvent select @row_number := @row_number + 1, e.* from event e where e.Repeat_Schedule_id = repeatschedule_ID and Is_Deleted = 0 and Start_DateTime > now() order by Start_DateTime;
+	insert into tempOldEvent select @row_number := @row_number + 1, e.* from event e where e.bevent_id = bevent_id and Is_Deleted = 0 and Start_DateTime > now() order by Start_DateTime;
 
 	SET @row_number:=0;
-	insert into tempEventEdit select @row_number := @row_number + 1, e.* from tempEvent e where e.Repeat_Schedule_id = repeatschedule_ID and Is_Deleted = 0 order by Start_DateTime;
+	insert into tempEventEdit select @row_number := @row_number + 1, e.* from tempEvent e where e.bevent_id = bevent_id and Is_Deleted = 0 order by Start_DateTime;
 
 	update tempEventEdit SET Event_id = -1;
 	update tempOldEvent set Is_Deleted = 1;
@@ -337,7 +342,5 @@ BEGIN
 	end if;
 	-- drop table if exists tempEvent;
 	-- drop table if exists tempOldEvent;
-END$ 
-DELIMITER ;
-
+END$ DELIMITER ;
 
