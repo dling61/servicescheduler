@@ -89,28 +89,28 @@ CREATE PROCEDURE `_GENERATE_EVENTS`(bevent_id INT,
                             out last_event_id INT)
 BEGIN
 	DECLARE repeat_setting varchar(500);
-	DECLARE startTime, endTime TIME;
-	DECLARE fromDate, toDate date;
+	DECLARE start_time, end_time TIME;
+	DECLARE from_date, to_date date;
 	DECLARE n, i int;
 	DECLARE BY_Day varchar(500);
 	DECLARE LOOP_int int;
 	DECLARE LOOP_Date date;
 	DECLARE temp_event_id, community_id int;
-	DECLARE eventName, status, communityId, tz_id, location, host,
+	DECLARE event_name, status, community_id, tz_id, location, host,
 	 BEventId, creatorId, lastModifiedId varchar(500);
 
 
 	SELECT 
-		Repeat_Interval, From_Date, To_Date
-	INTO repeat_setting , fromDate , toDate FROM
-		baseevent
+		be.Repeat_Interval, be.From_Date, be.To_Date
+	INTO repeat_setting , from_date , to_date FROM
+		baseevent be
 	WHERE
 		BEvent_Id = bevent_id LIMIT 1;
 
 
 	SELECT 
 		BEvent_StartTime, BEvent_EndTime
-	INTO startTime , endTime FROM
+	INTO start_time , end_time FROM
 		baseevent
 	WHERE
 		BEvent_Id = bevent_id LIMIT 1;
@@ -118,8 +118,8 @@ BEGIN
 	call SPLIT_REPEAT_SCHEDULE(repeat_setting);
 
 
-	if now() > fromDate then -- check start time
-		SET fromDate = now();
+	if now() > from_date then -- check start time
+		SET from_date = now();
 	end if;
 
 	SELECT 
@@ -135,24 +135,24 @@ BEGIN
 	SET temp_event_id = init_event_id;
 
 	-- data transfer
-	Select be.BEvent_Name, be.BEvent_Tz_Id, be.BEvent_Location, be.BEvent_Host, be.BEvent_Id, be.Creator_Id, be.community_id
-	into eventName, tz_id, location, host, BEventId, creatorId, community_id
+	Select be.BEvent_Name, be.BEvent_Tz_Id, be.BEvent_Location, be.BEvent_Host, be.BEvent_Id, be.Creator_Id, be.Community_ID
+	into event_name, tz_id, location, host, BEventId, creator_id, community_id
 	from baseevent be
 	where BEvent_id = bevent_id LIMIT 1;
 
 	while LOOP_int < n DO
-		SET LOOP_DATE = getNextDateOfWeekDay(fromDate, SPLIT_STRING(by_day,',',LOOP_int+1));
-		While LOOP_DATE < toDate DO
+		SET LOOP_DATE = getNextDateOfWeekDay(from_date, SPLIT_STRING(by_day,',',LOOP_int+1));
+		While LOOP_DATE < to_date DO
 			insert into tempEvent(
 			Event_Id,Event_Name,Community_Id,
 			Tz_Id,Location,`Host`,
 			BEvent_Id,RSchedule_Id, 
 			Start_DateTime,End_DateTime,description, 
 			is_deleted, Creator_Id,Created_Time,Last_Modified,Last_Modified_Id) 
-			values (temp_event_id,eventName,community_id,
+			values (temp_event_id,event_name,community_id,
 					tz_id,location,host,
 					BEventId,0,
-					UNIX_TIMESTAMP(addtime(LOOP_DATE, startTime)), UNIX_TIMESTAMP(addtime(LOOP_DATE , endTime)),'',
+					UNIX_TIMESTAMP(addtime(LOOP_DATE, start_time)), UNIX_TIMESTAMP(addtime(LOOP_DATE , end_time)),'',
 					0, owner_id, now(),now(),owner_id);
 			SET LOOP_DATE = DATE_ADD(LOOP_DATE, interval i day);
 			SET temp_event_id = temp_event_id + 1;
