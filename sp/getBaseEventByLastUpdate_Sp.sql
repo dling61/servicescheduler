@@ -19,7 +19,8 @@
 
   -- base event list  
   SELECT distinct bs.BEvent_Id beventid, bs.BEvent_Name beventname, bs.BEvent_StartTime starttime, bs.BEvent_EndTime endtime, bs.BEvent_Location location,
-		bs.BEvent_Host host, bs.BEvent_Tz_Id tzid,
+		bs.BEvent_Host host, bs.BEvent_Tz_Id tzid, bs.Repeat_Interval repeatinterval, bs.From_Date fromdate, bs.To_Date todate,
+		bs.BEvent_Alert alert, bs.BEvent_Status status, bs.BEvent_Description desp,
 		bs.Is_Deleted isdeleted, bs.Created_Time createdtime, bs.Last_Modified lastmodified
 	FROM baseevent bs 
 	where bs.Community_Id = communityid and bs.Last_Modified > p_lastupdate and bs.Is_Deleted = 0 order by bs.BEvent_Id;
@@ -36,6 +37,11 @@
   SELECT ap.Task_Id taskid, ap.User_Id userid, u.User_Name username, u.Profile userprofile 
      FROM assignmentpool ap, user u
       WHERE  ap.Task_Id in (select distinct taskid from tmp_task) and ap.Is_Deleted = 0 and ap.User_Id = u.User_Id order by ap.Task_Id;
+	  
+  -- create a repeatschedule list
+  SELECT rs.RSchedule_Id rscheduleid, rs.Repeat_Interval repeatinterval, rs.From_Date fromdate, rs.To_date todate, rs.BEvent_Id beventid 
+     FROM repeatschedule rs
+      WHERE  rs.BEvent_Id in (select distinct BEvent_Id from baseevent where Community_Id = communityid) and rs.Is_Deleted = 0  order by rs.RSchedule_Id;  
 	
   drop table tmp_task;
  

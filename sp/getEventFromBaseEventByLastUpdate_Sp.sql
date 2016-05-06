@@ -19,7 +19,7 @@
 
   -- Event list
   SELECT Event_Id eventid, Event_Name eventname, Description description, FROM_UNIXTIME(Start_Datetime) startdatetime,
-          FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert, Tz_Id tzid, Status status, Is_Deleted isdeleted, BEvent_Id beventid, Location location, Host host, Created_Time createdtime, Last_Modified lastmodified
+          FROM_UNIXTIME(End_Datetime) enddatetime, Alert alert, Tz_Id tzid, Status status, Is_Deleted isdeleted, BEvent_Id beventid, RSchedule_Id rscheduleid, Location location, Host host, Created_Time createdtime, Last_Modified lastmodified
       FROM event where BEvent_id = baseeventid and Last_Modified > p_lastupdate and Is_Deleted = 0 order by event.Start_Datetime;
   
   -- create a temp table

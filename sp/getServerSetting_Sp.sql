@@ -1,5 +1,6 @@
-DELIMITER $$
+
   DROP PROCEDURE IF EXISTS getServerSetting;
+  DELIMITER $$
   CREATE PROCEDURE `getServerSetting`()
   BEGIN
   
