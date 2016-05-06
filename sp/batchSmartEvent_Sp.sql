@@ -82,7 +82,6 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS `_GENERATE_SMART_EVENTS`;
 DELIMITER $
 CREATE PROCEDURE `_GENERATE_SMART_EVENTS`(base_event_id INT,
-                            community_id INT,
                             owner_id INT,
                             init_event_id INT,
                             out last_event_id INT)
@@ -95,12 +94,13 @@ BEGIN
 	DECLARE LOOP_int int;
 	DECLARE LOOP_Date date;
 	DECLARE temp_event_id int;
+	DECLARE temp_community_id int;
 	DECLARE eventName, status, communityId, tz_id, location, host,
 	 BEventId, creatorId, lastModifiedId varchar(500);
 
 	SELECT 
-		Repeat_Interval, From_Date, To_Date
-	INTO repeat_setting , fromDate , toDate FROM
+		Repeat_Interval, From_Date, To_Date, Community_Id
+	INTO repeat_setting , fromDate , toDate, temp_community_id FROM
 		event
 	WHERE
 		Event_Id = base_event_id;
@@ -147,7 +147,7 @@ BEGIN
 			Start_DateTime,End_DateTime,description, 
 			Repeat_Interval, From_Date, To_Date, Refer_Id,
 			is_deleted, Creator_Id,Created_Time,Last_Modified,Last_Modified_Id) 
-			values (temp_event_id,'',community_id,
+			values (temp_event_id,'',temp_community_id,
 					'','','',
 					UNIX_TIMESTAMP(addtime(LOOP_DATE, startTime)), UNIX_TIMESTAMP(addtime(LOOP_DATE , endTime)),'',
 					'','','', base_event_id,
@@ -165,7 +165,6 @@ DROP PROCEDURE IF EXISTS `GENERATE_SMART_EVENTS`;
 DELIMITER $
 CREATE PROCEDURE `GENERATE_SMART_EVENTS`(
                             base_event_id INT,
-                            community_id INT,
                             owner_id INT,
                             init_event_id INT,
                             out last_event_id INT)
@@ -195,7 +194,8 @@ BEGIN
 	  PRIMARY KEY (`Event_Id`),
 	  KEY `Community_Id` (`Community_Id`)
 	);
-	call _GENERATE_SMART_EVENTS(base_event_id, community_id, owner_id,init_event_id,last_event_id);
+	
+	call _GENERATE_SMART_EVENTS(base_event_id,owner_id,init_event_id,last_event_id);
 	
 	insert into event select * from tempEvent;
 	commit;
