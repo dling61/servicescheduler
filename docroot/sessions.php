@@ -54,7 +54,8 @@
 		    	ini_set('session.gc_maxlifetime', NORMAL_SESSION);
 		    }
 		    
-		    session_regenerate_id(true);
+			// This is to control whether to regenerate ID
+		    session_regenerate_id(false);
 		    $_SESSION[SESSION_TIMESTAMP] = time();
 
 		    return $_SESSION[SESSION_UID];
