@@ -13,9 +13,8 @@ class Event Extends Resource
     }
 	protected $lastid;
 	
-	// create a single event without tasks or one of repeating events
-	// If creating a repeating event, "beventid" needs to be passed in by client. Otherwise, it's 0 for "beventid" for a single event
-	// 10/16/2015
+	// create a single event without tasks 
+	// 05/04/2016
 	Protected function insert_single_event($event_parms) {
 	
 		$ownerid = $event_parms['ownerid'];
@@ -30,9 +29,11 @@ class Event Extends Resource
 		$location = $event_parms['location'];
 		$host = $event_parms['host'];
 		$status = $event_parms['status'];
-		$repeatscheduleid = $event_parms['repeatscheduleid'];
-		$beventid =  $event_parms['beventid'];
-		
+		$referid = $event_parms['referid'];
+		$repeatinterval =  $event_parms['repeatinterval'];
+		$fromdate =  $event_parms['fromdate'];
+		$todate =  $event_parms['todate'];
+			
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!'); 
 	 
 		$query = "SELECT Event_Id FROM event WHERE Event_Id = $eventid";
@@ -45,8 +46,10 @@ class Event Extends Resource
 			// case #1 Repeating events -- first repeating event
 			// Create a base event in the baseschedule and the first table in the event table
 			$queryinsert = "INSERT INTO event ".
-									"(Event_Id,Event_Name,Community_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host, Status, Repeat_Schedule_Id,BEvent_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
-									" values('$eventid','$eventname','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description','$alert','$tzid', '$location', '$host', '$status','$repeatscheduleid', '$beventid',".
+									"(Event_Id,Event_Name,Community_Id,Start_DateTime,End_DateTime,Description,Alert,Tz_Id,Location, Host, Status, ".
+									" Refer_Id,Repeat_Interval,From_Date, To_Date, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+									" values('$eventid','$eventname','$communityid',UNIX_TIMESTAMP('$startdatetime'),UNIX_TIMESTAMP('$enddatetime'),'$description',".
+									" '$alert','$tzid', '$location', '$host', '$status','$referid', '$repeatinterval', '$fromdate', '$todate', ".
 									" '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(),'$ownerid')";
 			
 			$result = mysqli_query($dbc,$queryinsert);
@@ -60,6 +63,33 @@ class Event Extends Resource
 		echo $data2;
 		//$data->close();
 		mysqli_close($dbc);
+	}
+	
+	// generate repeat events
+	// 05/04/2016/14/2016  -- This is to generate repeat events
+	Protected function generate_events($eventid, $event_parms) {
+		$base_event_id = $eventid;
+		$ownerid = $event_parms['ownerid'];
+		$inieventid = $event_parms['inieventid'];
+		$lasteventid = '';
+		
+		$mysql = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
+		
+		// call a stored procedure 
+		if ($mysql->query("CALL GENERATE_SMART_EVENTS('$base_event_id','$ownerid', '$inieventid',@return)")) {
+	      $select = $mysql->query('select @return');
+		  $result = mysqli_fetch_assoc($select);
+		  $lasteventid  = $result['@return'];
+		}
+		else {
+			echo '<strong>Error Message ' . $mysql->error . '</strong></p>';
+		}
+		
+		$data2 = json_encode(array('lasteventid'=> $lasteventid));
+		echo $data2;
+		//$data->close();
+		mysqli_close($mysql);
+		
 	}
 	
 	// create a new event and associated tasks
@@ -236,7 +266,7 @@ class Event Extends Resource
 		$startdatetime = $event_parms['startdatetime'];
 		$enddatetime = $event_parms['enddatetime'];
 		$status = $event_parms['status'];
-		$repeatscheduleid = $event_parms['repeatscheduleid'];
+		$rscheduleid = $event_parms['rscheduleid'];
 		$beventid = $event_parms['beventid'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
@@ -247,7 +277,7 @@ class Event Extends Resource
 		    // event exists and go ahead to update it
 			$queryupdate = "Update event set Tz_id = $tzid, Event_Name = '$eventname', Description = '$desp', Alert = $alert, ".
                            " Location = '$location', Host = '$host', Start_DateTime = UNIX_TIMESTAMP('$startdatetime'), End_DateTime = UNIX_TIMESTAMP('$enddatetime'),"	.
-                           " Repeat_Schedule_Id = '$repeatscheduleid', Status = '$status', BEvent_id = $beventid ";					   
+                           " RSchedule_Id = '$rscheduleid', Status = '$status', BEvent_id = $beventid ";					   
 			$queryupdate = $queryupdate . ", Last_Modified = UTC_TIMESTAMP(), Last_Modified_Id = " . $ownerid . " Where Event_Id = " .$eventid .";";
 		    
 			try {
@@ -491,9 +521,11 @@ class Event Extends Resource
 			'alert' => 'Alert',
 			'location' => 'Location',
 			'host' => 'Host',
-			'beventid' => 'BEvent_id',
 			'status' => 'Status',
-			'repeatscheduleid' => 'Repeat_Schedule_Id'
+			'referid' => 'Refer_Id',
+			'repeatinterval' => 'Repeat_Interval',
+			'fromdate' => 'From_Date',
+			'todate' => 'To_Date'
 		);
 	
 		$ownerid = $event_arr['ownerid'];
@@ -553,26 +585,11 @@ class Event Extends Resource
 		if ($lastElement == "event") {
 			// process a single event
 			$this->insert_single_event($request->body_parameters);
-		}  
-		/** this is a URL to insert a task and associated tasks
-		/***
-		if ($lastElement == "event") {
-			foreach($request->body_parameters['event'] as $param_name => $param_value) {
-				$parameters1[$param_name] = $param_value;				
-			}
-			// ADD tasks, process them to insert into the event table and task and assign task
-			$this->insert($request->body_parameters['ownerid'], $request->body_parameters['communityid'], $parameters1);
-		}  
-		// to add multiple tasks
-		else if ($lastElement == "tasks") {
-			$eventid  = $request->url_elements[count($request->url_elements)-2];
-			// ADD tasks, process them to insert into the task table and assign task
-			$this->insert_tasks($request->body_parameters['ownerid'],$eventid , $request->body_parameters['task']);
-		} if ($lastElement == "task")  {
-			$eventid  = $request->url_elements[count($request->url_elements)-2];
-			$this->insert_task($eventid, $request->body_parameters);
-		} 
-		***/
+		}  if ($lastElement == "generateevents") {
+			$eventid = $request->url_elements[count($request->url_elements)-2];	
+			// generate repeat events
+			$this->generate_events($eventid, $request->body_parameters);
+		}
     }
 	
 	// update an event 
@@ -622,6 +639,10 @@ class Event Extends Resource
 			$eventid = $lastElement;
 			$this->partial_update_event($eventid, $event_arr);
 		}	
+	}
+	
+	public function options($request) {
+		
 	}
 	
 

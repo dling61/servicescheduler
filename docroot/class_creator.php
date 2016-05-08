@@ -105,9 +105,9 @@ class Creator Extends Resource
 			$one_arr['taskid'] = $row['Task_Id'];
 			$one_arr['eventid'] = $row['Event_Id'];
 			$one_arr['taskhelperid'] = $row['TaskHelper_Id'];
-			$one_arr['baseeventid'] = $row['BEvent_Id'];
+			$one_arr['beventid'] = $row['BEvent_Id'];
 			$one_arr['participantgroupid'] = $row['PGroup_Id'];
-			$one_arr['repeatscheduleid'] = $row['RSchedule_Id'];
+			$one_arr['rscheduleid'] = $row['RSchedule_Id'];
 			$one_arr['participantid'] = $row['Participant_Id'];
 			
 			if ($one_arr['ownerid'] != 0) {

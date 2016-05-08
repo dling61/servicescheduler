@@ -189,6 +189,10 @@ class Serversetting Extends Resource
 		$this->pgetserversetting();
 	
     }
+	
+	public function options($request) {
+		
+	}
 
 	
 	

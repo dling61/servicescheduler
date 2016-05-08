@@ -5,11 +5,17 @@
 	 *    Database Connection
 	 *    TBD: Change them for the environment
 	 */
-    define('DB_NAME', 'cschedule2016');
-    define('DB_USER', 'root');
-    define('DB_PASS', '');
-    define('DB_SERVER', '127.0.0.1');
-    define('DEBUG_FLAG', '0');
+    //define('DB_NAME', 'cschedule2016');
+    //define('DB_USER', 'root');
+    //define('DB_PASS', '');
+    //define('DB_SERVER', '127.0.0.1');
+
+    define('DB_NAME', 'stage');
+    define('DB_USER', 'production0324');
+    define('DB_PASS', 'Fdy-tNK-twJ-c79');
+    define('DB_SERVER', 'cscheduledb.cosvtcebil3t.us-west-2.rds.amazonaws.com');
+	
+	define('DEBUG_FLAG', '0');
 	
 	/**
 	 *   Profile Image Location
@@ -28,8 +34,14 @@
 	 *   Top Level Directory
 	 *   TBD: Change it for the environment
 	 */
-	 define('__DIR__', '/var/www/html/api');
-	
+	 define('TOP_DIR', '/var/www/html/');
+	 
+	 /**
+	  *   Facebook Integration
+	  *   TBD: Change it for the environment
+	  */
+	 define('FACEBOOK_CALLBACK', '/var/www/html/api/session/facebook/fbcallback.php');
+	 
 	/**
 	 *    Security Keys
 	 */

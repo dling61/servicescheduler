@@ -261,5 +261,8 @@ class RepeatSchedule Extends Resource
 		}	
 	}
 	
+	public function options($request) {
+	}
+	
 }
 ?>

@@ -20,12 +20,18 @@ class BaseEvent Extends Resource
 		$ownerid = $event_parms['ownerid'];
 		$beventid = $event_parms['beventid'];
 		$eventname = $event_parms['beventname'];
+		$communityid = $event_parms['communityid'];
 		$starttime = $event_parms['bstarttime'];
 		$endtime = $event_parms['bendtime'];
-		//$alert = $event_parms['balert'];
+		$alert = $event_parms['balert'];
+		$status = $event_parms['bstatus'];
+		$desp =  $event_parms['bdesp'];
 		$tzid = $event_parms['btzid'];
 		$location = $event_parms['blocation'];
 		$host = $event_parms['bhost'];
+		$repeatinterval = $event_parms['repeatinterval'];
+		$fromdate = $event_parms['fromdate'];
+		$todate = $event_parms['todate'];
 		
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME)or die('Database Error 2!');
 	   
@@ -36,8 +42,10 @@ class BaseEvent Extends Resource
 			try {
 				// start a transaction
 				$queryinsert = "INSERT INTO baseevent ".
-									"(BEvent_Id,BEvent_Name,BEvent_StartTime,BEvent_EndTime,BEvent_Location,BEvent_Host, BEvent_Tz_Id, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
-									" values('$beventid','$eventname','$starttime','$endtime','$location', '$host','$tzid',".
+									"(BEvent_Id,BEvent_Name,Community_Id, BEvent_StartTime,BEvent_EndTime,BEvent_Alert, BEvent_Status, BEvent_Description,BEvent_Location,BEvent_Host, BEvent_Tz_Id, ".
+									" Repeat_Interval, From_Date, To_Date, Creator_Id,Is_Deleted,Created_Time,Last_Modified, Last_Modified_Id)".
+									" values('$beventid','$eventname','$communityid','$starttime','$endtime', '$alert', '$status', '$desp', '$location', '$host','$tzid',".
+									"  '$repeatinterval', '$fromdate', '$todate', ".
 									" '$ownerid','0',UTC_TIMESTAMP(),UTC_TIMESTAMP(),'$ownerid')";
 		
 				$result = mysqli_query($dbc,$queryinsert);
@@ -66,7 +74,7 @@ class BaseEvent Extends Resource
 		$dbc = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
 		$query = "SELECT BEvent_id beventid, BEvent_Name name, BEvent_StartTime starttime, BEvent_EndTime endtime, BEvent_Location location, ".
-		         " BEvent_Host host, BEvent_Tz_Id tzid ".
+		         " BEvent_Host host, BEvent_Tz_Id tzid, BEvent_Alert, alert, BEvent_Status status, BEvent_Description desp, Repeat_Interval repeatinterval, From_Date fromdate, To_Date todate, Community_Id communityid".
 				 " FROM baseevent WHERE BEvent_Id = '$beventid' and Is_Deleted = 0";
       
 		$data = mysqli_query($dbc, $query) or die(mysqli_error());
@@ -83,7 +91,15 @@ class BaseEvent Extends Resource
 			$one_arr['blocation'] = $row['location'];
 			$one_arr['bhost'] = $row['host'];
 			$one_arr['btzid'] = $row['tzid'];
-					
+			$one_arr['balert'] = $row['alert'];
+			$one_arr['bstatus'] = $row['status'];
+			$one_arr['bdesp'] = $row['desp'];
+			$one_arr['repeatinterval'] = $row['repeatinterval'];
+			$one_arr['fromdate'] = $row['fromdate'];
+			$one_arr['todate'] = $row['todate'];
+			$one_arr['todate'] = $row['todate'];
+			$one_arr['todate'] = $row['todate'];
+			$one_arr['communityid'] = $row['communityid'];
 			$data2 = json_encode($one_arr);
 			echo $data2;
 		}
@@ -134,6 +150,7 @@ class BaseEvent Extends Resource
 					   $one_arr['host']  = $row['host'];
 					   $one_arr['status']  = $row['status'];
 					   $one_arr['beventid'] = $row['beventid'];
+					   $one_arr['rscheduleid'] = $row['rscheduleid'];
 					   $one_arr['task'] = "";
 					   $event_arr[$i] = $one_arr;
 					   $i++;			   
@@ -286,7 +303,10 @@ class BaseEvent Extends Resource
 			'bendtime' => 'BEvent_EndTime',
 			'btzid' => 'BEvent_Tz_Id',
 			'blocation' => 'BEvent_Location',
-			'bhost' => 'BEvent_Host'
+			'bhost' => 'BEvent_Host',
+			'repeatinterval' => 'Repeat_Interval',
+			'fromdate' => 'From_Date',
+			'todate' => 'To_Date'
 		);
 	
 		$ownerid = $bevent_arr['ownerid'];
@@ -352,7 +372,11 @@ class BaseEvent Extends Resource
 		if ($lastElement == "baseevent") {
 			// process a single base event
 			$this->insert_base_event($request->body_parameters);
-		}  
+		} 
+		else if ($lastElement == "batchevent") {
+			// batch event 
+			
+		}
     }
 	
 	// update an event 

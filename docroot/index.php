@@ -21,11 +21,16 @@
 	//get all the information from http call
 	$request = new Request();
 	
-	// check security code
-	checkscode($request, $applications);
+	// check security code 
+	// 05/06/2016 Remove the security check
+	//checkscode($request, $applications);
 	$lastELement = end($request->url_elements);
 	reset($request->url_elements);
 	
+	/*
+	 *   Session Management
+	 *   TBD: Comment out the following if statement if no session is needed
+	 */
 	$uid = get_session_uid();
 	if ($lastELement != "signin" && $uid == LOGIN_SESSION_EXPIRE) {
 		header('Content-Type: application/json; charset=utf8');
@@ -42,13 +47,18 @@
 	// http://servicescheduler.net/creator?
 	// url_element1[1]
 	$controller_name = ucfirst($request->url_elements[2]);
-	// for cross domain error
+	/*
+	 *  for cross domain error
+	 *   TBD: Need to comment out "*" when supporting session
+	 */
 	header('Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept');
-    // header('Access-Control-Allow-Origin: *');
-	// for ajax session 
-	header('Access-Control-Allow-Credentials: true');
-	//header('Access-Control-Allow-Origin: http://img.cschedule.org');
-	header('Access-Control-Allow-Origin: ' . WEB_SERVER."'");
+    header('Access-Control-Allow-Origin: *');
+	/*
+     *   TBD: Support Ajax session
+     **/	 
+	//header('Access-Control-Allow-Credentials: true');
+	header('Access-Control-Allow-Origin: http://img.cschedule.org');
+	header('Access-Control-Allow-Origin: ' . WEB_SERVER);
 
 	if (class_exists($controller_name)) {
 		$controller = new $controller_name($request);

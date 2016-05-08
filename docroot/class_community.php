@@ -327,6 +327,7 @@ class Community Extends Resource
 		$baseevent_arr = array();
 		$task_arr = array();
 		$assignmentpool_arr = array();
+		$repeatschedule_arr = array();
 		
 		$mysql = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		// call a stored procedure to get the list of base events, their repeating tasks and assignment pools
@@ -340,6 +341,7 @@ class Community Extends Resource
 			    $i = 0;
 				$j = 0;
 				$k = 0;
+				$l = 0;
                 //Loop the two result sets, reading it into an array
                 while ($row = $result->fetch_array(MYSQLI_ASSOC))
                 {
@@ -352,6 +354,13 @@ class Community Extends Resource
 					   $one_arr['bendtime'] = $row['endtime'];
 					   $one_arr['blocation'] = $row['location'];
 					   $one_arr['bhost'] = $row['host'];
+					   $one_arr['tzid'] = $row['tzid'];
+					   $one_arr['balert'] = $row['alert'];
+					   $one_arr['bstatus'] = $row['status'];
+					   $one_arr['bdesp'] = $row['desp'];
+					   $one_arr['repeatinterval'] = $row['repeatinterval'];
+					   $one_arr['fromdate'] = $row['fromdate'];
+					   $one_arr['todate'] = $row['todate'];
 					   $one_arr['task'] = "";
 					   
 					   $baseevent_arr[$i] = $one_arr;
@@ -383,6 +392,18 @@ class Community Extends Resource
 		
 					    $assignmentpool_arr[$k] = $third_arr;
 						$k++;	
+					}
+					else if ($h == 3) {
+						// third resultset -- the users are in the assignment pool
+						$fourth_arr = array();
+						$fourth_arr['rscheduleid'] = $row['rscheduleid'];
+						$fourth_arr['repeatinterval'] = $row['repeatinterval'];
+						$fourth_arr['fromdate'] = $row['fromdate'];
+						$fourth_arr['todate'] = $row['todate'];
+						$fourth_arr['beventid'] = $row['beventid'];
+						
+					    $repeatschedule_arr[$l] = $fourth_arr;
+						$l++;	
 					}
                 } // while end
 				
@@ -439,11 +460,25 @@ class Community Extends Resource
 					$i++;
 				}
 			}
-			//insert task associated with the event into the event_arr TBD
+			//insert task associated with the base event into the baseevent_arr
 			$svalue['task'] = $task_temp;
+		
+			// go down to the repeat interval
+			foreach ($repeatschedule_arr as $mvalue) {
+				if ($mvalue['beventid'] == $beventid) {
+			       $repeatschedule_temp_1 = array();
+				   $repeatschedule_temp_1['rscheduleid'] =$mvalue['rscheduleid'];
+				   $repeatschedule_temp_1['repeatinterval'] = $mvalue['repeatinterval'];
+				   $repeatschedule_temp_1['fromdate'] =$mvalue['fromdate'];
+				   $repeatschedule_temp_1['todate'] = $mvalue['todate'];
+				   
+				   $svalue['repeatschedule'] = $repeatschedule_temp_1;
+			    }
+			}
+			
 			$return_arr[$x] = $svalue;
 			$x++;	
-		} // end of event loop
+		} // end of base event loop
 		unset($svalue);
 		
 		$data2 = json_encode($return_arr);
@@ -556,21 +591,28 @@ class Community Extends Resource
 	// This is for get event API to get the latest events and tasks assigned to an event
 	// First result is for events; Second result is for tasks; Third result is for assignment
 	// This is for API 1.5  03/23/2016
-	Protected function pgetlastupdate_sh($communityid, $lastupdatetime) {
+	Protected function pgetlastupdate_sh($communityid, $startdate, $number) {
+		//check if it's valid
+		if ($startdate == null or $number == null) {
+			header('HTTP/1.0 204 missing start or num parameters', true, 204);
+			$data2 = json_encode(array('code'=> 204, 'message' => 'missing start or num parameter'));
+			echo $data2;
+			exit;
+		}
 	  
 		$return_arr = array();
 		$delevent_arr = array();
 		$delbevent_arr = array();
 		$event_arr = array();
-		$bevent_arr = array();
+		$assignmentpool_arr = array();
 		$task_arr = array();
-		$assignment_arr = array();
+		$taskhelper_arr = array();
 		$final_event_arr = array();
 		
 		$mysql = new mysqli(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
 		
 		// call a stored procedure 
-		if ($mysql->multi_query("CALL getEventByLastUpdate('$communityid', '$lastupdatetime')")) {
+		if ($mysql->multi_query("CALL getSmartEventByPage('$communityid', '$startdate', '$number')")) {
 	      // this is for the number of resultset 
           $h = 0;
 		  //loop through three resultsets
@@ -586,15 +628,7 @@ class Community Extends Resource
                 while ($row = $result->fetch_array(MYSQLI_ASSOC))
                 {
                     if ($h == 0) {
-					    // first resultset 
-						//$isdeleted = $row['isdeleted'];
-						
-						// if it's deleted, just add it to "deletedevent"
-						//if ($isdeleted == 1) {
-						//	$delevent_arr[$j] = $row['eventid'];
-						//	$j++;
-						//}
-						//else {
+					
 						   $one_arr = array();
 						   $one_arr['eventid'] = $row['eventid'];
 						   $one_arr['eventname'] = $row['eventname'];
@@ -606,11 +640,13 @@ class Community Extends Resource
 						   $one_arr['location'] = $row['location'];
 						   $one_arr['host']  = $row['host'];
 						   $one_arr['status']  = $row['status'];
-						   $one_arr['beventid'] = $row['beventid'];
-						   $one_arr['task'] = "";
+						   $one_arr['referid'] = $row['referid'];
+						   $one_arr['repeatinterval'] = $row['repeatinterval'];
+						   $one_arr['fromdate'] = $row['fromdate'];
+						   $one_arr['todate'] = $row['todate'];
+						   
 						   $event_arr[$i] = $one_arr;
 						   $i++;			   
-						//}     
 					}
 					else if ($h == 1){
 					   // second result set for task 
@@ -618,11 +654,10 @@ class Community Extends Resource
 						$two_arr['taskid'] = $row['taskid'];
 						$two_arr['eventid'] = $row['eventid'];
 						$two_arr['taskname'] = $row['taskname'];
-						$two_arr['beventid'] = $row['beventid'];
 						$two_arr['desp'] = $row['description'];
 						$two_arr['assignallowed'] = $row['assignallowed'];
 						//$two_arr['assignedgroup'] = $row['assignedgroup'];
-					    $two_arr['taskhelper'] = "";
+					   
 						$task_arr[$k] = $two_arr;
 						$k++;
 					}
@@ -636,23 +671,19 @@ class Community Extends Resource
 						$third_arr['username'] = $row['username'];
 						$third_arr['userprofile'] = PROFILE_SERVER .$row['userprofile'];
 						$third_arr['status'] = $row['status'];
-					    $assignment_arr[$l] = $third_arr;
+						
+					    $taskhelper_arr[$l] = $third_arr;
 						$l++;
 					} if ($h == 3) {
-						// fourth result set for base event
+						// fourth result set for assignment pool
 						$fourth_arr = array();
-						$fourth_arr['beventid'] = $row['beventid'];
-						$fourth_arr['beventname'] = $row['beventname'];
-						$fourth_arr['bstarttime'] = $row['starttime'];
-						$fourth_arr['bendtime'] = $row['endtime'];
-						$fourth_arr['btzid'] = $row['tzid'];
-						$fourth_arr['blocation'] = $row['location'];
-						$fourth_arr['bhost'] = $row['host'];
-						//$fourth_arr['frequency'] = $row['frequency'];
-						//$fourth_arr['interval'] = $row['binterval'];
-						//$fourth_arr['from'] = $row['bfrom'];
-						//$fourth_arr['to'] = $row['bto'];
-						$bevent_arr[$m] = $fourth_arr;
+						$fourth_arr['assignmentpoolid'] = $row['assignmentpoolid'];
+						$fourth_arr['taskid'] = $row['taskid'];
+						$fourth_arr['userid'] = $row['userid'];
+						$fourth_arr['username'] = $row['username'];
+						$fourth_arr['userprofile'] = PROFILE_SERVER .$row['userprofile'];
+						
+						$assignmentpool_arr[$m] = $fourth_arr;
 						$m++;
 					}
                 } // while end
@@ -670,78 +701,10 @@ class Community Extends Resource
 		
 		mysqli_close($mysql);	
 		
-	    //$delevent_str = array();
-		//$delevent_str = implode(",", $delevent_arr); // concatenate to the string separating by ,
-		//$delbevent_str = array();
-		//$delbevent_str = implode(",", $delbevent_arr); // concatenate to the string separating by ,
-		
-		// Construct a output jason object starting from event, task, and then assignment
-		foreach ($event_arr as $svalue) {
-			$eventid = $svalue['eventid'];
-			$reventid = $svalue['beventid'];
-			// go down to task level
-			$task_temp = array();
-			$i = 0;
-			foreach ($task_arr as $mvalue) {
-				if ($mvalue['eventid'] == $eventid) {
-					// Add the task one by one
-					$task_temp_1 = array();
-					$task_id = $mvalue['taskid'];
-					
-					$task_temp_1['taskid'] = $mvalue['taskid'];
-					$task_temp_1['taskname'] = $mvalue['taskname'];
-					$task_temp_1['desp'] = $mvalue['desp'];
-					$task_temp_1['beventid'] = $mvalue['beventid'];
-					$task_temp_1['assignallowed'] = $mvalue['assignallowed'];
-					//$task_temp_1['assignedgroup'] = $mvalue['assignedgroup'];
-				
-					$assignment_temp = array();
-					$j = 0;
-					// go down to the task assignment level
-					foreach ($assignment_arr as $avalue) {
-						// add eventid because the same taskid will be used for different events
-						if ($avalue['taskid'] == $task_id and $avalue['eventid'] == $eventid) {
-							$assignment_temp_1 = array();
-							
-							$assignment_temp_1['taskhelperid'] = $avalue['taskhelperid'];
-							$assignment_temp_1['userid'] = $avalue['userid'];
-							$assignment_temp_1['username'] = $avalue['username'];
-							$assignment_temp_1['userprofile'] = $avalue['userprofile'];
-							$assignment_temp_1['status'] = $avalue['status'];
-							
-							$assignment_temp[$j] = $assignment_temp_1;
-							$j++;
-						}
-					}
-					$task_temp_1['taskhelper'] = $assignment_temp;
-					//add tasks
-					$task_temp[$i] = $task_temp_1;
-					$i++;
-				}
-			}
-			//insert task associated with the event into the event_arr TBD
-			$svalue['task'] = $task_temp;
-			
-			// insert into the final array
-			if (!$reventid or $reventid != 0 ) {
-				if (array_key_exists($reventid, $final_event_arr)) {
-					$c = count($final_event_arr[$reventid]);
-					$final_event_arr[$reventid][$c] = $svalue;
-				}
-				else 
-				    $final_event_arr[$reventid][0] = $svalue;
-			}
-			else {
-				$final_event_arr[$eventid][0] = $svalue;
-			}
-			
-		} // end of event loop
-		unset($svalue);
-		
-		// finally get this output
-		//$return_arr['deletedevent'] = $delevent_arr;
-		$return_arr['event'] = $final_event_arr;
-		$return_arr['baseevent'] = $bevent_arr;
+		$return_arr['event'] = $event_arr;
+		$return_arr['task'] = $task_arr;
+		$return_arr['taskhelper'] = $taskhelper_arr;
+		$return_arr['assignmentpool'] = $assignmentpool_arr;
          
 		$data2 = json_encode($return_arr);
 		echo $data2;
@@ -962,7 +925,9 @@ class Community Extends Resource
 		} 
 		else if ($lastElement == "event") {
 			$communityid  = $request->url_elements[count($request->url_elements)-2];
-			$this->pgetlastupdate_sh($communityid, $lastupdatetime);
+			$startdate = $request->parameters['start'];
+			$number = $request->parameters['num'];
+			$this->pgetlastupdate_sh($communityid, $startdate, $number);
 		}
 		else if ($lastElement == "community") {
 			$this->pgetlastupdate($ownerid, $lastupdatetime);
@@ -1083,8 +1048,10 @@ class Community Extends Resource
 			$ownerid = $request->parameters['ownerid'];
 			$this->pdelete_participant($communityid, $userid, $ownerid);
 		}
-		
-    }
+	}	
+    
+	public function options($request) {
+	}
 	
 	// Insert a participant if it doesn't exist in the community 
 	Protected function insert_creator($ownerid, $communityid, $participantid) {
