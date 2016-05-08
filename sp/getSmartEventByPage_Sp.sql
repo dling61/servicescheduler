@@ -1,7 +1,7 @@
  
-  DROP PROCEDURE IF EXISTS getSmartEventByNumberOfEvents;
+  DROP PROCEDURE IF EXISTS getSmartEventByPage;
   DELIMITER $$
-  CREATE PROCEDURE `getSmartEventByNumberOfEvents`(IN communityid INT, IN p_from Date, IN numberOfEvents INT)
+  CREATE PROCEDURE `getSmartEventByPage`(IN communityid INT, IN p_from Date, IN numberOfEvents INT)
   BEGIN
   
   DECLARE start_date DATE;
